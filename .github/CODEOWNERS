@@ -1,0 +1,18 @@
+# Core Engine
+/01-Source-code/core-engine/ @my-tetris-team/core-engine
+
+# Game State & Loop
+/01-Source-code/game-state-loop/ @my-tetris-team/game-state-loop
+
+# I/O & Rendering
+/01-Source-code/io-rendering/ @my-tetris-team/io-rendering
+
+# Persistence
+/01-Source-code/persistence/ @my-tetris-team/persistence
+
+# Testing & QA
+/02-Tests/ @my-tetris-team/testing-qa
+
+# Documentation
+/03-Documentation/ @my-tetris-team/docs-architecture
+README.md @my-tetris-team/docs-architecture
