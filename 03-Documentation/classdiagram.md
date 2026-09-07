@@ -5,28 +5,20 @@ classDiagram
     %% ================= Board =================
     class IBoard {
         <<interface>>
-        +isValidPosition(shape, position)
-boolean
-        +lockPiece(shape, position)
-void
-        +clearFullLines()
-number
-        +getGrid()
-CellState[][]
+        +isValidPosition(shape, position) boolean
+        +lockPiece(shape, position) void
+        +clearFullLines() number
+        +getGrid() CellState[][]
     }
 
     class Board {
         -width: number
         -height: number
         -grid: CellState[][]
-        +isValidPosition(shape, position)
-boolean
-        +lockPiece(shape, position)
-void
-        +clearFullLines()
-number
-        +getGrid()
-CellState[][]
+        +isValidPosition(shape, position) boolean
+        +lockPiece(shape, position) void
+        +clearFullLines() number
+        +getGrid() CellState[][]
     }
 
     class CellState {
@@ -38,14 +30,10 @@ CellState[][]
     %% ================= Tetromino =================
     class ITetromino {
         <<interface>>
-        +getShape()
-Shape
-        +getPosition()
-Position
-        +rotate()
-ITetromino
-        +moveBy(dx, dy)
-ITetromino
+        +getShape() Shape
+        +getPosition() Position
+        +rotate() ITetromino
+        +moveBy(dx, dy) ITetromino
     }
 
     class Tetromino {
@@ -53,14 +41,10 @@ ITetromino
         -shape: Shape
         -position: Position
         -rotationState: number
-        +getShape()
-Shape
-        +getPosition()
-Position
-        +rotate()
-ITetromino
-        +moveBy(dx, dy)
-ITetromino
+        +getShape() Shape
+        +getPosition() Position
+        +rotate() ITetromino
+        +moveBy(dx, dy) ITetromino
     }
 
     class TetrominoType {
@@ -87,13 +71,11 @@ ITetromino
 
     class IInputHandler {
         <<interface>>
-        +onAction(callback)
-void
+        +onAction(callback) void
     }
 
     class KeyboardInputHandler {
-        +onAction(callback)
-void
+        +onAction(callback) void
     }
 
     %% ================= Score / Level =================
@@ -101,14 +83,10 @@ void
         -score: number
         -level: number
         -linesCleared: number
-        +addClearedLines(count)
-void
-        +getScore()
-number
-        +getLevel()
-number
-        +getDropInterval()
-number
+        +addClearedLines(count) void
+        +getScore() number
+        +getLevel() number
+        +getDropInterval() number
     }
 
     %% ================= Game (Core Controller) =================
@@ -117,16 +95,11 @@ number
         -currentPiece: ITetromino
         -scoreManager: ScoreManager
         -isGameOver: boolean
-        +start()
-void
-        +handleAction(action)
-void
-        +tick()
-void
-        +spawnNextPiece()
-void
-        +getState()
-GameState
+        +start() void
+        +handleAction(action) void
+        +tick() void
+        +spawnNextPiece() void
+        +getState() GameState
     }
 
     class GameState {
@@ -140,36 +113,32 @@ GameState
     %% ================= Renderer =================
     class IRenderer {
         <<interface>>
-        +render(state: GameState)
-void
+        +render(state: GameState) void
     }
 
     class ConsoleRenderer {
-        +render(state: GameState)
-void
+        +render(state: GameState) void
     }
 
     %% ================= Persistence =================
     class IPersistence {
         <<interface>>
-        +save(data)
-void
-        +load()
-PersistedData
+        +save(data) void
+        +load() PersistedData
     }
 
     class JsonStorage {
         -filePath: string
-        +save(data)
-void
-        +load()
-PersistedData
+        +save(data) void
+        +load() PersistedData
     }
 
     %% ================= Relationships =================
-    Board ..|> ITetromino : s23
-    KeyboardInputHandler ..|> IRenderer : s24
-    JsonStorage ..|> IPersistence
+    Board ..|> IBoard : implements
+    Tetromino ..|> ITetromino : implements
+    KeyboardInputHandler ..|> IInputHandler : implements
+    ConsoleRenderer ..|> IRenderer : implements
+    JsonStorage ..|> IPersistence : implements
 
     Board --> CellState
     Tetromino --> TetrominoType
@@ -182,4 +151,4 @@ PersistedData
     Game --> IRenderer : render state
     Game ..> GameState : produces
     IInputHandler --> PlayerAction : emits
-    ```
+```
