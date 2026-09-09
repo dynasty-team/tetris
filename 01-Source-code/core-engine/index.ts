@@ -2,4 +2,4 @@
 export * from './TetrisEngine';
 export * from './tetromino-shapes';
 export * from './collision';
-
+export * from './movement';
