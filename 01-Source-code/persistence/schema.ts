@@ -1,13 +1,6 @@
+import type { SaveData } from "../shared/types";
+
 export const CURRENT_SAVE_VERSION = 1;
-
-export interface SaveData {
-    version: number;
-    highScore: number;
-    level: number;
-    linesCleared: number;
-    timestamp: number;
-}
-
 /**
  * ตรวจสอบข้อมูล SaveData ที่โหลดมาจากไฟล์
  */
@@ -38,7 +31,7 @@ export function validateSaveData(data: unknown): data is SaveData {
         return false;
     }
 
-    if (typeof saveData.timestamp !== "number") {
+    if (typeof saveData.timestamp !== "string") {
         return false;
     }
 
