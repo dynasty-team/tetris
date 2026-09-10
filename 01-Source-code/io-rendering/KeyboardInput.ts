@@ -3,19 +3,30 @@ import type { GameAction } from '../shared/types';
 const DEFAULT_DAS_MS = 170;
 const DEFAULT_ARR_MS = 50;
 
-type RepeatableAction = 'MOVE_LEFT' | 'MOVE_RIGHT' | 'SOFT_DROP';
-type ActionHandler = (action: GameAction) => void;
-type InputStream = NodeJS.ReadableStream & {
+export type RepeatableAction = 'MOVE_LEFT' | 'MOVE_RIGHT' | 'SOFT_DROP';
+export type ActionHandler = (action: GameAction) => void;
+
+export interface TerminalRawMode {
 	isTTY?: boolean;
 	setRawMode?: (mode: boolean) => void;
-	resume?: () => void;
-	pause?: () => void;
-};
+}
 
-interface KeyboardInputOptions {
+export interface InputReader {
+	read: () => Promise<{ done: boolean; value?: Uint8Array }>;
+	cancel: () => Promise<void>;
+}
+
+export interface InputStream {
+	stream: () => {
+		getReader: () => InputReader;
+	};
+}
+
+export interface KeyboardInputOptions {
 	dasMs?: number;
 	arrMs?: number;
 	input?: InputStream;
+	terminal?: TerminalRawMode;
 }
 
 const KEY_ACTIONS: Record<string, GameAction> = {
@@ -40,17 +51,22 @@ const REPEATABLE_ACTIONS = new Set<RepeatableAction>([
 /** Converts raw terminal input into game actions and manages DAS/ARR. */
 export class KeyboardInput {
 	private readonly input: InputStream;
+	private readonly terminal: TerminalRawMode | undefined;
 	private readonly dasMs: number;
 	private readonly arrMs: number;
 	private onAction: ActionHandler | undefined;
 	private activeRepeat: RepeatableAction | undefined;
 	private dasTimer: ReturnType<typeof setTimeout> | undefined;
 	private arrTimer: ReturnType<typeof setInterval> | undefined;
+	private reader: InputReader | undefined;
 	private escapeSequence = '';
 	private started = false;
 
 	public constructor(options: KeyboardInputOptions = {}) {
-		this.input = options.input ?? process.stdin;
+		this.input = options.input ?? Bun.stdin;
+		this.terminal =
+			options.terminal ??
+			(typeof process !== 'undefined' && process.stdin?.isTTY ? process.stdin : undefined);
 		this.dasMs = options.dasMs ?? DEFAULT_DAS_MS;
 		this.arrMs = options.arrMs ?? DEFAULT_ARR_MS;
 	}
@@ -60,9 +76,22 @@ export class KeyboardInput {
 
 		this.onAction = onAction;
 		this.started = true;
-		this.input.setRawMode?.(true);
-		this.input.resume?.();
-		this.input.on('data', this.handleInput);
+
+		if (typeof this.terminal?.setRawMode === 'function') {
+			try {
+				this.terminal.setRawMode(true);
+			} catch {
+				// Ignore if the current terminal environment does not support raw mode
+			}
+		}
+
+		this.reader = this.input.stream().getReader();
+		void this.readInput();
+	}
+
+	/** Stops DAS/ARR when the terminal reports that the active key was released. */
+	public release(): void {
+		this.clearRepeat();
 	}
 
 	public stop(): void {
@@ -71,9 +100,30 @@ export class KeyboardInput {
 		this.started = false;
 		this.clearRepeat();
 		this.onAction = undefined;
-		this.input.off('data', this.handleInput);
-		this.input.setRawMode?.(false);
-		this.input.pause?.();
+		void this.reader?.cancel();
+		this.reader = undefined;
+
+		if (typeof this.terminal?.setRawMode === 'function') {
+			try {
+				this.terminal.setRawMode(false);
+			} catch {
+				// Ignore if terminal cannot be reset
+			}
+		}
+	}
+
+	private async readInput(): Promise<void> {
+		if (this.reader === undefined) return;
+
+		try {
+			while (this.started) {
+				const { value, done } = await this.reader.read();
+				if (done) return;
+				if (value !== undefined) this.handleInput(value);
+			}
+		} catch {
+			if (this.started) throw new Error('Failed to read keyboard input.');
+		}
 	}
 
 	private handleInput = (chunk: Uint8Array | string): void => {
