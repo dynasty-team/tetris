@@ -181,6 +181,31 @@ describe('Movement & Lock Delay System (C4)', () => {
       expect(result.success).toBe(false);
       expect(engine.getRenderSnapshot().activePiece.rotation).toBe(0);
     });
+
+    test('rotate() ทำ floor-kick ขึ้นเท่าที่จำเป็นเมื่อชิ้นส่วนแตะพื้น', () => {
+      const engine = new TetrisEngine();
+      engine.setActivePiece(createTestPiece('T', 4, 18, 0));
+
+      const result = engine.rotate();
+
+      expect(result.success).toBe(true);
+      expect(engine.getRenderSnapshot().activePiece.rotation).toBe(1);
+      expect(engine.getRenderSnapshot().activePiece.position.y).toBe(17);
+    });
+
+    test('rotate() ไม่ใช้ floor-kick เพื่อหลบผ่านบล็อกที่กีดขวางจริง', () => {
+      const engine = new TetrisEngine();
+      let board = createEmptyBoard();
+      board = setCell(board, 5, 18, 'Z');
+      engine.setBoard(board);
+      engine.setActivePiece(createTestPiece('T', 4, 18, 0));
+
+      const result = engine.rotate();
+
+      expect(result.success).toBe(false);
+      expect(engine.getRenderSnapshot().activePiece.rotation).toBe(0);
+      expect(engine.getRenderSnapshot().activePiece.position.y).toBe(18);
+    });
   });
 
   describe('2. Lock Delay Initiation & RenderSnapshot.isLocking', () => {

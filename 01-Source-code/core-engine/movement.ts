@@ -143,10 +143,7 @@ export function performLock(state: MovementState): ActionResult {
   state.lockResets = 0;
   state.isLocking = false;
 
-  if (typeof state.lockPiece === 'function') {
-    const res = state.lockPiece();
-    if (res) return res;
-  } else if (state.activePiece) {
+  if (state.activePiece) {
     lockPieceToBoard(state.board, state.activePiece);
     state.activePiece = null;
 
@@ -369,15 +366,53 @@ export function rotate<T extends MovementState = MovementState>(state: T): Movem
   }
 
   const currentPiece = state.activePiece;
-  const candidatePiece = rotatePiece(currentPiece);
+  let candidatePiece = rotatePiece(currentPiece);
 
   if (checkCollision(state.board, candidatePiece)) {
-    return {
-      success: false,
-      linesCleared: [],
-      gameOver: state.gameOver ?? false,
-      state,
+    const lowestOccupiedY = candidatePiece.shape.reduce(
+      (lowestY, shapeRow, row) =>
+        shapeRow.some((cell) => cell) ? Math.max(lowestY, candidatePiece.position.y + row) : lowestY,
+      Number.NEGATIVE_INFINITY,
+    );
+    const hasNonFloorCollision = candidatePiece.shape.some((shapeRow, row) =>
+      shapeRow.some((cell, col) => {
+        if (!cell) return false;
+
+        const targetX = candidatePiece.position.x + col;
+        const targetY = candidatePiece.position.y + row;
+
+        if (targetX < 0 || targetX >= state.board[0]!.length) return true;
+        if (targetY < 0 || targetY >= state.board.length) return false;
+
+        return state.board[targetY]?.[targetX] !== 0;
+      }),
+    );
+
+    if (hasNonFloorCollision || lowestOccupiedY < state.board.length) {
+      return {
+        success: false,
+        linesCleared: [],
+        gameOver: state.gameOver ?? false,
+        state,
+      };
+    }
+
+    candidatePiece = {
+      ...candidatePiece,
+      position: {
+        ...candidatePiece.position,
+        y: candidatePiece.position.y + state.board.length - 1 - lowestOccupiedY,
+      },
     };
+
+    if (checkCollision(state.board, candidatePiece)) {
+      return {
+        success: false,
+        linesCleared: [],
+        gameOver: state.gameOver ?? false,
+        state,
+      };
+    }
   }
 
   // หมุนสำเร็จ
