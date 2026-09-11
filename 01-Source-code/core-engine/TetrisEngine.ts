@@ -7,8 +7,15 @@ import type {
   RenderSnapshot,
   TetrominoType,
   GameStatus,
+  Position,
 } from '../shared/types';
 import { createEmptyBoard } from '../shared/board-utils';
+import { checkCollision } from './collision';
+import { getShape } from './tetromino-shapes';
+import { SevenBagRandomizer } from './randomizer';
+
+/** ตำแหน่งเริ่มต้น (Bounding box top-left) มาตรฐานสำหรับ spawn piece (SRS) */
+export const DEFAULT_SPAWN_POSITION: Readonly<Position> = { x: 3, y: 0 };
 
 /**
  * คลาสหลัก TetrisEngine ควบคุม Game State และ Logic ของเกม Tetris
@@ -23,16 +30,23 @@ export class TetrisEngine implements CoreEngine {
   private nextPiece: TetrominoType | null;
   private gameOver: boolean;
   private isLocking: boolean;
+  private randomizer: SevenBagRandomizer;
 
-  constructor() {
-    this.board = createEmptyBoard();
+  /**
+   * @param randomizer ตัวสุ่ม 7-bag randomizer (สามารถส่ง mock/custom shuffle เข้ามาทดสอบได้)
+   * @param initialBoard กระดานเริ่มต้น (ถ้าไม่ระบุจะเป็น empty board 10x20)
+   */
+  constructor(randomizer?: SevenBagRandomizer, initialBoard?: Board) {
+    this.board = initialBoard ? initialBoard.map((row) => [...row]) : createEmptyBoard();
     this.activePiece = null;
     this.score = 0;
     this.level = 1;
     this.linesClearedTotal = 0;
-    this.nextPiece = null;
     this.gameOver = false;
     this.isLocking = false;
+    this.randomizer = randomizer ?? new SevenBagRandomizer();
+    // ดึง piece เตรียมไว้ใน nextPiece ล่วงหน้าสำหรับ Next preview
+    this.nextPiece = this.randomizer.next();
   }
 
   /**
@@ -108,15 +122,91 @@ export class TetrisEngine implements CoreEngine {
   }
 
   /**
-   * สุ่ม/ดึง piece ชิ้นถัดไปเข้ามาเป็น active piece
+   * สุ่ม/ดึง piece ชิ้นถัดไปเข้ามาเป็น active piece ที่ตำแหน่งเริ่มต้นด้านบนกระดาน
+   * หากเกิดการชนทันที (มีบล็อกกองถึงจุด spawn) = จบเกม (gameOver: true)
    */
   public spawnNextPiece(): ActionResult {
-    // TODO: Implement piece spawning via 7-bag randomizer
-    return {
-      success: false,
-      linesCleared: [],
-      gameOver: this.gameOver,
+    if (this.gameOver) {
+      return {
+        success: false,
+        linesCleared: [],
+        gameOver: true,
+      };
+    }
+
+    // นำชิ้นส่วนที่เตรียมไว้ใน nextPiece มาเกิด หากไม่มีให้ดึงจากถุง
+    const pieceType: TetrominoType = this.nextPiece ?? this.randomizer.next();
+    // สุ่มชิ้นถัดไปเข้าคิว nextPiece เสมอ
+    this.nextPiece = this.randomizer.next();
+
+    const newPiece: ActivePiece = {
+      type: pieceType,
+      position: { ...DEFAULT_SPAWN_POSITION },
+      rotation: 0,
+      shape: getShape(pieceType, 0),
     };
+
+    // ตรวจสอบการชนกับบล็อกเดิมบนกระดานตั้งแต่จุดเกิด (Lock out / Block out)
+    const hasCollision = checkCollision(this.board, newPiece);
+
+    if (hasCollision) {
+      this.gameOver = true;
+      this.activePiece = newPiece;
+      return {
+        success: false,
+        linesCleared: [],
+        gameOver: true,
+      };
+    }
+
+    this.activePiece = newPiece;
+    this.isLocking = false;
+
+    return {
+      success: true,
+      linesCleared: [],
+      gameOver: false,
+    };
+  }
+
+  /**
+   * กำหนดกระดานใหม่ (ใช้สำหรับ Testing และ State restoration)
+   */
+  public setBoard(board: Board): void {
+    this.board = board.map((row) => [...row]);
+  }
+
+  /**
+   * ดึงสำเนากระดานปัจจุบัน
+   */
+  public getBoard(): Board {
+    return this.board.map((row) => [...row]);
+  }
+
+  /**
+   * ดึงสำเนา active piece ปัจจุบัน (null หากยังไม่ spawn)
+   */
+  public getActivePiece(): ActivePiece | null {
+    if (!this.activePiece) return null;
+    return {
+      ...this.activePiece,
+      position: { ...this.activePiece.position },
+      shape: this.activePiece.shape.map((row) => [...row]),
+    };
+  }
+
+  /**
+   * ดึงชิ้นส่วนถัดไปในคิว
+   */
+  public getNextPiece(): TetrominoType | null {
+    return this.nextPiece;
+  }
+
+  /**
+   * ดึง 7-bag randomizer ประจำ engine
+   */
+  public getRandomizer(): SevenBagRandomizer {
+    return this.randomizer;
   }
 
   /**
@@ -128,15 +218,10 @@ export class TetrisEngine implements CoreEngine {
     return {
       board: this.board.map((row) => [...row]),
       activePiece: this.activePiece ?? {
-        type: 'T',
-        position: { x: 4, y: 0 },
+        type: this.nextPiece ?? 'T',
+        position: { ...DEFAULT_SPAWN_POSITION },
         rotation: 0,
-        shape: [
-          [0, 1, 0, 0],
-          [1, 1, 1, 0],
-          [0, 0, 0, 0],
-          [0, 0, 0, 0],
-        ],
+        shape: getShape(this.nextPiece ?? 'T', 0),
       },
       nextPiece: this.nextPiece ?? 'I',
       score: this.score,
@@ -167,4 +252,15 @@ export class TetrisEngine implements CoreEngine {
   public isGameOver(): boolean {
     return this.gameOver;
   }
+}
+
+/**
+ * ฟังก์ชัน helper spawnNextPiece แบบ standalone สำหรับกรณีเรียกใช้งานแบบฟังก์ชันเดี่ยว
+ *
+ * @param engine TetrisEngine instance (หากไม่ส่งเข้ามา จะสร้าง engine ใหม่ขึ้นมารองรับ)
+ * @returns ActionResult
+ */
+export function spawnNextPiece(engine?: TetrisEngine): ActionResult {
+  const targetEngine = engine ?? new TetrisEngine();
+  return targetEngine.spawnNextPiece();
 }
