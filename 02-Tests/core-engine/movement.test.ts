@@ -15,6 +15,12 @@ import {
   performLock,
   type MovementState,
 } from '../../01-Source-code/core-engine/movement';
+import {
+  lockActivePieceToBoardStep,
+  clearFullLinesStep,
+  spawnNextPieceStep,
+  applyLock,
+} from '../../01-Source-code/core-engine/lock-pipeline';
 import { TetrisEngine } from '../../01-Source-code/core-engine/TetrisEngine';
 
 /** Helper สำหรับสร้าง ActivePiece สำหรับการทดสอบ */
@@ -32,7 +38,43 @@ function createTestPiece(
   };
 }
 
+function createLockPipelineState(): MovementState {
+  const board = createEmptyBoard();
+  const bottomRow = board[19]!;
+
+  for (let column = 0; column < 3; column++) {
+    bottomRow[column] = 'T';
+  }
+  for (let column = 7; column < 10; column++) {
+    bottomRow[column] = 'T';
+  }
+
+  return {
+    board,
+    activePiece: createTestPiece('I', 3, 18),
+    isLocking: false,
+    linesClearedTotal: 0,
+  };
+}
+
 describe('Movement & Lock Delay System (C4)', () => {
+  test('pipe(lockActivePieceToBoardStep, clearFullLinesStep, spawnNextPieceStep) ให้ผลตรงกับเรียกทีละขั้นเอง', () => {
+    const baseState = createLockPipelineState();
+    const spawnNextPiece = () => ({ success: true, linesCleared: [], gameOver: false });
+    const stateA = { ...baseState, spawnNextPiece };
+    const stateB = structuredClone(baseState);
+    stateB.spawnNextPiece = spawnNextPiece;
+
+    applyLock(stateA);
+
+    const step1 = lockActivePieceToBoardStep(stateB);
+    const step2 = clearFullLinesStep(step1);
+    spawnNextPieceStep(step2);
+
+    expect(stateA.board).toEqual(stateB.board);
+    expect(stateA.linesClearedTotal).toEqual(stateB.linesClearedTotal);
+  });
+
   describe('1. Directional Movement (moveLeft, moveRight, softDrop)', () => {
     test('moveLeft() ขยับไปทางซ้าย 1 ช่องสำเร็จเมื่อทางโล่ง', () => {
       const engine = new TetrisEngine();

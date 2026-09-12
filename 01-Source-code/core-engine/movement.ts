@@ -8,8 +8,7 @@ import type { Board, ActivePiece, ActionResult, TetrominoType } from '../shared/
 import { LOCK_DELAY_MS, MAX_LOCK_RESETS } from '../shared/constants';
 import { checkCollision } from './collision';
 import { rotatePiece, getShape } from './tetromino-shapes';
-
-export { rotatePiece } from './tetromino-shapes';
+import { applyLock } from './lock-pipeline';
 
 /**
  * Interface สำหรับ State ที่ส่งเข้าฟังก์ชันการเคลื่อนที่
@@ -28,6 +27,7 @@ export interface MovementState {
   linesClearedTotal?: number;
   lockPiece?: () => ActionResult | void;
   spawnNextPiece?: () => ActionResult;
+  lastClearedLines?: number[];
   [key: string]: unknown;
 }
 
@@ -143,18 +143,15 @@ export function performLock(state: MovementState): ActionResult {
   state.lockResets = 0;
   state.isLocking = false;
 
-  if (state.activePiece) {
-    lockPieceToBoard(state.board, state.activePiece);
-    state.activePiece = null;
-
-    if (typeof state.spawnNextPiece === 'function') {
-      return state.spawnNextPiece();
-    }
+  if (!state.activePiece) {
+    return { success: true, linesCleared: [], gameOver: state.gameOver ?? false };
   }
+
+  applyLock(state); // <- ใช้ pipe() ตรงนี้แทน logic เดิม
 
   return {
     success: true,
-    linesCleared: [],
+    linesCleared: state.lastClearedLines ?? [],
     gameOver: state.gameOver ?? false,
   };
 }
