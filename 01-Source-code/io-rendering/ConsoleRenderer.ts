@@ -109,33 +109,4 @@ export function render(snapshot: RenderSnapshot) {
         console.log("=== GAME OVER ===");
     }
 }
-//-----------------------
-const emptyBoard: number[][] = Array.from({ length: 20 }, () =>
-    Array(10).fill(0)
-);
 
-// ใส่บล็อกที่ "ล็อกแล้ว" ไว้แถวล่างสุดบางส่วน ทดสอบว่า render occupied ถูกไหม
-emptyBoard[19] = [1, 1, 1, 1, 1, 1, 1, 1, 0, 0];
-
-const mockSnapshot = {
-    board: emptyBoard,
-    activePiece: {
-        type: "T",
-        position: { x: 4, y: 0 },
-        rotation: 0,
-        shape: [
-            [0, 1, 0, 0],
-            [1, 1, 1, 0],
-            [0, 0, 0, 0],
-            [0, 0, 0, 0],
-        ],
-    },
-    nextPiece: "I",
-    score: 1250,
-    level: 3,
-    linesClearedTotal: 20,
-    status: "playing" as const,
-    isLocking: false,
-};
-
-render(mockSnapshot);
