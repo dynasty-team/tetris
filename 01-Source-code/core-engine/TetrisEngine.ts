@@ -18,6 +18,7 @@ import {
   softDrop,
   rotate,
   hardDrop,
+  tick,
   performLock,
   isPieceOnGround,
   startLockTimer,
@@ -105,19 +106,7 @@ export class TetrisEngine implements CoreEngine, MovementState {
    * เรียกตาม interval ของ gravity เพื่อให้ piece เลื่อนลงอัตโนมัติ
    */
   public tick(): ActionResult {
-    if (this.gameOver) {
-      return {
-        success: false,
-        linesCleared: [],
-        gameOver: true,
-      };
-    }
-
-    if (!this.activePiece) {
-      return this.spawnNextPiece();
-    }
-
-    return this.softDrop();
+    return tick(this);
   }
 
   /**

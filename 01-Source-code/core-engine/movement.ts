@@ -466,3 +466,23 @@ export function hardDrop<T extends MovementState = MovementState>(state: T): Mov
     state,
   };
 }
+
+export const tick = <T extends MovementState = MovementState>(state: T): MovementResult<T> => {
+  if (state.gameOver) {
+    return {
+      success: false,
+      linesCleared: [],
+      gameOver: true,
+      state,
+    };
+  }
+  if (!state.activePiece) {
+    return state.spawnNextPiece?.() ?? {
+        success: false,
+        linesCleared: [],
+        gameOver: true,
+      };
+  } 
+
+  return softDrop(state);
+};
