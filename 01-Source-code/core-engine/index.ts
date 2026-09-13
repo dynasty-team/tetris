@@ -5,3 +5,4 @@ export * from './collision';
 export * from './line-clear';
 export * from './randomizer';
 export * from './movement';
+export * from './wall-kick-data';
