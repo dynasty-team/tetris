@@ -22,8 +22,6 @@ export interface MovementState {
   lockTimer?: ReturnType<typeof setTimeout> | null;
   gameOver?: boolean;
   nextPiece?: TetrominoType | null;
-  score?: number;
-  level?: number;
   linesClearedTotal?: number;
   lockPiece?: () => ActionResult | void;
   spawnNextPiece?: () => ActionResult;

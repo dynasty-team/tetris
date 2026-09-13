@@ -34,11 +34,11 @@ export const DEFAULT_SPAWN_POSITION: Readonly<Position> = { x: 3, y: 0 };
  * คลาสหลัก TetrisEngine ควบคุม Game State และ Logic ของเกม Tetris
  * ทำตาม CoreEngine interface ตามข้อกำหนดเชิงสถาปัตยกรรม (OOP)
  */
-export class TetrisEngine implements CoreEngine, MovementState {
+export class TetrisEngine implements CoreEngqine, MovementState {
   public board: Board;
   public activePiece: ActivePiece | null;
-  public score: number;
-  public level: number;
+  private score: number;
+  private level: number;
   public linesClearedTotal: number;
   public nextPiece: TetrominoType | null;
   public gameOver: boolean;
@@ -240,6 +240,31 @@ export class TetrisEngine implements CoreEngine, MovementState {
    */
   public getLevel(): number {
     return this.level;
+  }
+
+  /**
+    * เพิ่มคะแนนสะสม (เรียกโดย game-state-loop หลังคำนวณคะแนนจาก linesCleared)
+    * กัน input ผิดปกติ (ติดลบ/NaN) ไม่ให้ทำลาย state
+    */
+  public addScore(points: number): void {
+    if (!Number.isFinite(points) || points < 0) return;
+    this.score += points;
+  }
+
+  /**
+   * กำหนด level ปัจจุบัน (เรียกโดย game-state-loop หลังคำนวณจาก linesClearedTotal)
+   * บังคับขั้นต่ำ level 1 เสมอ
+   */
+  public setLevel(level: number): void {
+    if (!Number.isFinite(level)) return;
+    this.level = Math.max(1, Math.floor(level));
+  }
+
+  /**
+   * ดึงจำนวนแถวที่เคลียร์สะสมทั้งหมด (สมมาตรกับ getScore()/getLevel())
+  */
+  public getLinesClearedTotal(): number {
+    return this.linesClearedTotal;
   }
 
   /**
