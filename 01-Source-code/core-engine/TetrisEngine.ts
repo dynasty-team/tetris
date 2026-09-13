@@ -34,7 +34,7 @@ export const DEFAULT_SPAWN_POSITION: Readonly<Position> = { x: 3, y: 0 };
  * คลาสหลัก TetrisEngine ควบคุม Game State และ Logic ของเกม Tetris
  * ทำตาม CoreEngine interface ตามข้อกำหนดเชิงสถาปัตยกรรม (OOP)
  */
-export class TetrisEngine implements CoreEngqine, MovementState {
+export class TetrisEngine implements CoreEngine, MovementState {
   public board: Board;
   public activePiece: ActivePiece | null;
   private score: number;
