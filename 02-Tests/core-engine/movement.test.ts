@@ -211,10 +211,17 @@ describe('Movement & Lock Delay System (C4)', () => {
     });
 
     test('rotate() ล้มเหลวเมื่อหมุนแล้วชนบล็อก คืน success: false และ rotation ไม่เปลี่ยน', () => {
+      // เดิมทดสอบด้วยบล็อกกีดขวางแค่ 1 ตำแหน่ง แต่ระบบ SRS wall-kick มี offset สำรองถึง 5 ตำแหน่ง
+      // (ซ้าย/ขวา/ขึ้น) การกีดขวางแค่จุดเดียวจึงไม่พอจะทำให้หมุนไม่สำเร็จอีกต่อไป — ต้องล้อมกรอบ
+      // ให้ครอบคลุมทุกตำแหน่งที่ offset ทั้ง 5 ของ JLSTZ_KICKS[0] จะไปตกลง (คอลัมน์ 3-6, แถว 4-9)
+      // เพื่อยืนยันว่าเมื่อ "ชนจริงทุก offset" การหมุนต้องล้มเหลวและคง rotation เดิมไว้
       const engine = new TetrisEngine();
       let board = createEmptyBoard();
-      // T piece rotation 1 (ชี้ขวา): row 2 col 1 คือบล็อกล่าง (4+1=5, y=5+2=7)
-      board = setCell(board, 5, 7, 'Z');
+      for (let y = 4; y <= 9; y++) {
+        for (let x = 3; x <= 6; x++) {
+          board = setCell(board, x, y, 'Z');
+        }
+      }
       engine.setBoard(board);
       engine.setActivePiece(createTestPiece('T', 4, 5, 0));
 
@@ -224,7 +231,11 @@ describe('Movement & Lock Delay System (C4)', () => {
       expect(engine.getRenderSnapshot().activePiece.rotation).toBe(0);
     });
 
-    test('rotate() ทำ floor-kick ขึ้นเท่าที่จำเป็นเมื่อชิ้นส่วนแตะพื้น', () => {
+    test('rotate() ใช้ SRS wall-kick เลื่อนขึ้น (และข้าง) เท่าที่จำเป็นเมื่อชิ้นส่วนแตะพื้น', () => {
+      // T piece ที่ (4, 18) rotation 0 อยู่ชิดพื้นพอดี (row ล่างสุดของ shape อยู่ที่ y=19)
+      // การหมุนตรงตำแหน่งเดิม (offset [0,0]) และ offset [-1,0] จะพา piece ทะลุพื้น (y=20)
+      // ตาราง JLSTZ_KICKS ฝั่ง fromRotation=0 มี offset ลำดับที่ 3 คือ [-1,-1] ซึ่งขยับทั้งซ้าย
+      // และขึ้น 1 ช่องพร้อมกัน — เป็น offset แรกที่ไม่ชนบนกระดานว่าง จึงเป็นคำตอบ
       const engine = new TetrisEngine();
       engine.setActivePiece(createTestPiece('T', 4, 18, 0));
 
@@ -232,10 +243,14 @@ describe('Movement & Lock Delay System (C4)', () => {
 
       expect(result.success).toBe(true);
       expect(engine.getRenderSnapshot().activePiece.rotation).toBe(1);
+      expect(engine.getRenderSnapshot().activePiece.position.x).toBe(3);
       expect(engine.getRenderSnapshot().activePiece.position.y).toBe(17);
     });
 
-    test('rotate() ไม่ใช้ floor-kick เพื่อหลบผ่านบล็อกที่กีดขวางจริง', () => {
+    test('rotate() ไม่ใช้ wall-kick เพื่อหลบผ่านบล็อกที่กีดขวางจริง', () => {
+      // วางบล็อกกีดขวางที่ (5, 18) ซึ่งตรงกับตำแหน่งที่ offset [-1,-1] (คำตอบของเทสก่อนหน้า)
+      // ต้องใช้ในการหมุน ทำให้ offset นั้นชนไปด้วย และ offset ที่เหลือ ([0,2], [-1,2]) ก็ยังชน
+      // พื้น/ทะลุขอบกระดานอยู่ดี รวมทุก offset ชนหมด -> หมุนไม่สำเร็จ ตำแหน่ง/rotation เดิม
       const engine = new TetrisEngine();
       let board = createEmptyBoard();
       board = setCell(board, 5, 18, 'Z');
@@ -246,6 +261,7 @@ describe('Movement & Lock Delay System (C4)', () => {
 
       expect(result.success).toBe(false);
       expect(engine.getRenderSnapshot().activePiece.rotation).toBe(0);
+      expect(engine.getRenderSnapshot().activePiece.position.x).toBe(4);
       expect(engine.getRenderSnapshot().activePiece.position.y).toBe(18);
     });
   });
