@@ -26,12 +26,16 @@ Tetris เป็นเกมแนว Puzzle แบบผู้เล่นค�
   - S / ↓ : Soft Drop
   - W / ↑ : Rotate
   - Space : Hard Drop
+  - P : Pause
   - Q : Quit
-
+  
 - ระบบเกมต้องมี:
   - Score
   - Level
   - Increasing Speed
+  - wall kick 
+  -ใช้ระบบ 7-bag Randomizer
+   SRS (Super Rotation System) Wall-Kick Offset
 
 - Game Over เมื่อ Tetromino ใหม่ไม่สามารถ Spawn ได้
 ## Game Rules
