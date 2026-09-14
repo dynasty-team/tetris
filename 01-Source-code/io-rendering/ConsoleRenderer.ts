@@ -83,6 +83,17 @@ function renderNextPiece(nextPiece: TetrominoType): void {
     console.log(`Next: ${nextPiece}`);
 }
 
+function renderControls(): void {
+    console.log("Controls:");
+    console.log("  A / Left arrow   Move left");
+    console.log("  D / Right arrow  Move right");
+    console.log("  S / Down arrow   Soft drop");
+    console.log("  W / Up arrow     Rotate");
+    console.log("  Space            Hard drop");
+    console.log("  P                Pause / Resume");
+    console.log("  Q                Quit");
+}
+
 
 // =========================================================================
 // MAIN FUNCTION — จุดเดียวที่ export ออกไปให้ index.ts เรียกใช้
@@ -111,6 +122,7 @@ export function render(snapshot: RenderSnapshot): void {
     renderNextPiece(nextPiece);
     console.log(`Score: ${score}`);
     console.log(`Level: ${level}`);
+    renderControls();
 
     // แสดงข้อความพิเศษตามสถานะเกม (ถ้ามี)
     if (status === "paused") {
