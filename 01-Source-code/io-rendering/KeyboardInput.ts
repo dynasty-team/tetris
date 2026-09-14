@@ -114,11 +114,15 @@ export class KeyboardInput {
 	private handleInput = (chunk: Uint8Array | string): void => {
 		const input = typeof chunk === 'string' ? chunk : new TextDecoder().decode(chunk);
 		this.escapeSequence += input;
+		let lastAction: GameAction | undefined;
 
 		while (this.escapeSequence.length > 0) {
 			const parsed = this.readNextAction();
 			if (parsed === undefined) return;
-			if (parsed.action !== undefined) this.handleAction(parsed.action);
+			if (parsed.action !== undefined && parsed.action !== lastAction) {
+				this.handleAction(parsed.action);
+				lastAction = parsed.action;
+			}
 			this.escapeSequence = this.escapeSequence.slice(parsed.consumed);
 		}
 	};
