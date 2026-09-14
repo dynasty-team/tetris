@@ -1,69 +1,25 @@
-// TYPES — DRAFT ที่เขียนเองชั่วคราว เพราะ core-engine ยังไม่ merge (รอ M2)
-// รอ core-engine ว่า field/ชื่อ/ลำดับตรงกับของจริงไหม
-// แล้วค่อยเปลี่ยนมาเป็น `import type { ActivePiece, RenderSnapshot, Board, GameStatus } from "../core-engine/types"` แทน
-
-// ชนิดของ Tetromino ทั้ง 7 แบบตาม requirement
-type TetrominoType = "I" | "O" | "T" | "S" | "Z" | "J" | "L";
-
-// ค่าที่เก็บในแต่ละ cell ของ board (ตอนนี้สมมติเป็นตัวเลข 0/1)
-type CellValue = number;
-
-// ตำแหน่ง x,y บน board
-type Position = { x: number; y: number };
-
-// ข้อมูลของ piece ที่กำลังตกอยู่ปัจจุบัน
-type ActivePiece = {
-    type: TetrominoType;
-    position: Position;
-    rotation: number; // สถานะการหมุน (RotationState) — ปรับ type ให้ตรงถ้าเพื่อนใช้ enum
-    shape: number[][]; // ตาราง 0/1 บอกรูปทรงของ piece (เช่น 4x4)
-};
-
-// กระดานเกม — ห่อด้วย object ที่มี cells อยู่ข้างใน (ตามที่เห็นใน class diagram ของทีม)
-type Board = {
-    cells: CellValue[][];
-};
-
-// สถานะของเกม ณ ขณะนั้น (มี 3 ค่า: กำลังเล่น/พัก/จบเกม)
-type GameStatus = "playing" | "paused" | "gameover";
-
-// ข้อมูลทั้งหมดที่ ConsoleRenderer ต้องใช้ในการวาดจอ 1 ครั้ง
-type RenderSnapshot = {
-    board: Board;
-    activePiece: ActivePiece;
-    nextPiece: TetrominoType;
-    score: number;
-    level: number;
-    linesClearedTotal: number;
-    status: GameStatus;
-    isLocking: boolean;
-};
+import type { ActivePiece, RenderSnapshot, Board, GameStatus, CellValue, TetrominoType } from "../shared/types"
 
 
 // =========================================================================
 // CONSTANTS — ค่าคงที่ที่ใช้ร่วมกันทั้งไฟล์
-// รอ import จากไฟล์ constants.ts  
 // =========================================================================
 
 const BOARD_WIDTH = 10;   // ความกว้างของ board ตาม requirement (10 คอลัมน์)
 const BOARD_HEIGHT = 20;  // ความสูงของ board ตาม requirement (20 แถว)
 
-const EMPTY_CELL = 0;         // ค่าที่แปลว่า "ช่องว่าง"
-const OCCUPIED_MARKER = 1;    // ค่าที่ใช้ทำเครื่องหมายว่า "มีบล็อกอยู่" ตอนวาง piece ลง board
+const EMPTY_CELL: CellValue = 0; // ค่าที่แปลว่า "ช่องว่าง"
 
 
 // เช็คว่าตำแหน่ง (x, y) ยังอยู่ในขอบเขตของ board ไหม
-// ใช้แทนที่ BoardUtils.isInBounds() ของทีม (ยังไม่มีไฟล์จริงให้ import ตอนนี้)
 function isInBounds(x: number, y: number): boolean {
     return x >= 0 && x < BOARD_WIDTH && y >= 0 && y < BOARD_HEIGHT;
 }
 
-// คัดลอก board ทั้งก้อนออกมาใหม่ (deep copy เฉพาะ cells)
+// คัดลอก board ทั้งก้อนออกมาใหม่ (deep copy)
 // เหตุผล: ป้องกันไม่ให้การวาด piece ทับ ไปแก้ข้อมูล board จริงที่ core-engine ถืออยู่
 function cloneBoard(board: Board): Board {
-    return {
-        cells: board.cells.map(row => [...row]), // copy ทีละแถว กัน reference ชนกัน
-    };
+    return board.map(row => [...row]); // copy ทีละแถว กัน reference ชนกัน
 }
 
 // เอา activePiece ไปวางทับลงบน board (ที่ copy มาแล้วเท่านั้น) ตามตำแหน่ง position
@@ -72,7 +28,7 @@ function cloneBoard(board: Board): Board {
 function lockPiece(
     board: Board,
     piece: ActivePiece,
-    marker: number
+    marker: CellValue
 ): Board {
     for (let row = 0; row < piece.shape.length; row++) {
         const shapeRow = piece.shape[row];
@@ -85,8 +41,9 @@ function lockPiece(
                 const boardX = piece.position.x + col;
 
                 // วางค่าลงไปเฉพาะตำแหน่งที่ยังอยู่ในขอบเขต board เท่านั้น
-                if (isInBounds(boardX, boardY) && board.cells[boardY]) {
-                    board.cells[boardY][boardX] = marker;
+                const targetRow = board[boardY];
+                if (isInBounds(boardX, boardY) && targetRow) {
+                    targetRow[boardX] = marker;
                 }
             }
         }
@@ -94,7 +51,7 @@ function lockPiece(
     return board;
 }
 
-// แปลงค่า cell เดี่ยวๆ (ตัวเลข) ให้เป็นตัวอักษรที่จะ print ออกจอ
+// แปลงค่า cell เดี่ยวๆ (ตัวเลขหรือตัวอักษร) ให้เป็นตัวอักษรที่จะ print ออกจอ
 // EMPTY_CELL -> "." (ช่องว่าง), ค่าอื่น -> "#" (มีบล็อก)
 function renderCellSymbol(cellValue: CellValue): string {
     if (cellValue === EMPTY_CELL) {
@@ -114,7 +71,7 @@ function buildBorderLine(width: number): string {
 // ขั้นตอน: print เส้นขอบบน -> วนแต่ละแถว แปลง cell เป็นสัญลักษณ์แล้วต่อ "|" ครอบซ้าย-ขวา -> print เส้นขอบล่าง
 function renderBoardWithBorder(board: Board): void {
     console.log(buildBorderLine(BOARD_WIDTH));
-    for (const row of board.cells) {
+    for (const row of board) {
         const line = "|" + row.map(cell => renderCellSymbol(cell)).join("") + "|";
         console.log(line);
     }
@@ -124,6 +81,17 @@ function renderBoardWithBorder(board: Board): void {
 // แสดงชื่อของ piece ตัวถัดไปที่จะตกลงมา (เช่น "Next: I")
 function renderNextPiece(nextPiece: TetrominoType): void {
     console.log(`Next: ${nextPiece}`);
+}
+
+function renderControls(): void {
+    console.log("Controls:");
+    console.log("  A / Left arrow   Move left");
+    console.log("  D / Right arrow  Move right");
+    console.log("  S / Down arrow   Soft drop");
+    console.log("  W / Up arrow     Rotate");
+    console.log("  Space            Hard drop");
+    console.log("  P                Pause / Resume");
+    console.log("  Q                Quit");
 }
 
 
@@ -141,7 +109,7 @@ export function render(snapshot: RenderSnapshot): void {
     const displayBoard = lockPiece(
         cloneBoard(board),
         activePiece,
-        OCCUPIED_MARKER
+        activePiece.type
     );
 
     // ล้างจอเก่าก่อน เพื่อให้ทุกครั้งที่ state เปลี่ยน วาดจอใหม่สะอาด ไม่ scroll รก
@@ -154,6 +122,7 @@ export function render(snapshot: RenderSnapshot): void {
     renderNextPiece(nextPiece);
     console.log(`Score: ${score}`);
     console.log(`Level: ${level}`);
+    renderControls();
 
     // แสดงข้อความพิเศษตามสถานะเกม (ถ้ามี)
     if (status === "paused") {
@@ -162,40 +131,3 @@ export function render(snapshot: RenderSnapshot): void {
         console.log("=== GAME OVER ===");
     }
 }
-
-// ⚠️ ชั่วคราว — สำหรับทดสอบเฉยๆ ลบก่อน commit จริง
-
-// สร้าง board เปล่าๆ 10x20 (ทุกช่องเป็น EMPTY = 0) ห่อด้วย { cells } ตาม type ใหม่
-const emptyCells: number[][] = Array.from({ length: 20 }, () =>
-    Array(10).fill(0)
-);
-emptyCells[19] = [1, 1, 1, 1, 1, 1, 1, 1, 0, 0]; // ทดสอบแถวที่มีบล็อกล็อกแล้วบางส่วน
-
-const mockBoard: Board = {
-    cells: emptyCells,
-};
-
-const mockSnapshot: RenderSnapshot = {
-    board: mockBoard,
-    activePiece: {
-        type: "T",
-        position: { x: 4, y: 0 },
-        rotation: 0,
-        shape: [
-            [0, 1, 0, 0],
-            [1, 1, 1, 0],
-            [0, 0, 0, 0],
-            [0, 0, 0, 0],
-        ],
-    },
-    nextPiece: "I",
-    score: 1250,
-    level: 3,
-    linesClearedTotal: 20,
-    status: "playing",
-    isLocking: false,
-};
-
-render(mockSnapshot)
-const pausedSnapshot: RenderSnapshot = { ...mockSnapshot, status: "paused" };
-render(pausedSnapshot);
