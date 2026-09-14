@@ -119,38 +119,3 @@ export function render(snapshot: RenderSnapshot): void {
         console.log("=== GAME OVER ===");
     }
 }
-
-// ⚠️ ชั่วคราว — สำหรับทดสอบเฉยๆ ลบก่อน commit จริง
-
-// สร้าง board เปล่าๆ 10x20 (ทุกช่องเป็น EMPTY = 0)
-const emptyCells: Board = Array.from({ length: 20 }, () =>
-    Array<CellValue>(10).fill(0)
-);
-emptyCells[19] = ["I", "I", "I", "I", "I", "I", "I", "I", 0, 0]; // ทดสอบแถวที่มีบล็อกล็อกแล้วบางส่วน
-
-const mockBoard: Board = emptyCells;
-
-const mockSnapshot: RenderSnapshot = {
-    board: mockBoard,
-    activePiece: {
-        type: "T",
-        position: { x: 4, y: 0 },
-        rotation: 0,
-        shape: [
-            [0, 1, 0, 0],
-            [1, 1, 1, 0],
-            [0, 0, 0, 0],
-            [0, 0, 0, 0],
-        ],
-    },
-    nextPiece: "I",
-    score: 1250,
-    level: 3,
-    linesClearedTotal: 20,
-    status: "playing",
-    isLocking: false,
-};
-
-render(mockSnapshot)
-const pausedSnapshot: RenderSnapshot = { ...mockSnapshot, status: "paused" };
-render(pausedSnapshot);
