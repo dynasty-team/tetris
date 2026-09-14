@@ -46,6 +46,11 @@ export class GameStateLoop {
     this.renderer = options.renderer;
     this.input = options.input;
     this.onSave = options.onSave;
+
+    const lockAwareEngine = this.engine as CoreEngine & {
+      onLock?: (result: ActionResult) => void;
+    };
+    lockAwareEngine.onLock = (result) => this.handleLockedResult(result);
   }
 
   /**
@@ -102,6 +107,11 @@ export class GameStateLoop {
     if (this.input) {
       this.input.stop();
     }
+
+    const lockAwareEngine = this.engine as CoreEngine & {
+      onLock?: (result: ActionResult) => void;
+    };
+    lockAwareEngine.onLock = undefined;
 
     this.triggerSave();
   }
@@ -256,6 +266,19 @@ export class GameStateLoop {
       const newLevel = calculateLevel(this.engine.getLinesClearedTotal());
       this.engine.setLevel(newLevel);
     }
+  }
+
+  private handleLockedResult(result: ActionResult): void {
+    if (!this.running) return;
+
+    this.processActionResult(result);
+    if (result.gameOver || this.engine.isGameOver()) {
+      this.handleGameOver();
+      return;
+    }
+
+    this.render();
+    this.scheduleTick();
   }
 
   /**
