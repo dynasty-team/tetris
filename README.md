@@ -35,7 +35,7 @@ Tetris เป็นเกมแนว Puzzle แบบผู้เล่นค�
   - Increasing Speed
   - wall kick 
   -ใช้ระบบ 7-bag Randomizer
-   SRS (Super Rotation System) Wall-Kick Offset
+
 
 - Game Over เมื่อ Tetromino ใหม่ไม่สามารถ Spawn ได้
 ## Game Rules
