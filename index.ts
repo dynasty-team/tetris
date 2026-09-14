@@ -26,7 +26,14 @@ async function main(): Promise<void> {
 	const input = new KeyboardInput();
 
 	console.log(`High score: ${highScore}`);
-	console.log('Controls: A/D or arrows move, W/up rotates, S/down soft drops, Space hard drops, Q quits.');
+	console.log('Controls:');
+	console.log('  A / Left arrow   Move left');
+	console.log('  D / Right arrow  Move right');
+	console.log('  S / Down arrow   Soft drop');
+	console.log('  W / Up arrow     Rotate');
+	console.log('  Space            Hard drop');
+	console.log('  P                Pause / Resume');
+	console.log('  Q                Quit');
 
 	const gameLoop = new GameStateLoop({
 		engine,

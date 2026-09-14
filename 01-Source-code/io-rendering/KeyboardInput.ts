@@ -33,6 +33,7 @@ const KEY_ACTIONS: Record<string, GameAction> = {
 	d: 'MOVE_RIGHT',
 	s: 'SOFT_DROP',
 	w: 'ROTATE',
+	p: 'PAUSE',
 	' ': 'HARD_DROP',
 	q: 'QUIT',
 	'\u001b[D': 'MOVE_LEFT',
