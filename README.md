@@ -16,6 +16,8 @@ tetris/
 │   │   ├── movement.ts              # moveLeft/moveRight/softDrop/hardDrop/rotatePiece
 │   │   ├── line-clear.ts            # checkAndClearLines()
 │   │   ├── randomizer.ts            # 7-bag randomizer
+|   |   ├── lock-pipeline.ts         # แปลง function ให้รองรับ pipe()
+|   |   ├── wall-kick-data.ts        # ตาราง kick offset
 │   │   └── index.ts                 # export รวมของโมดูล
 │   │
 │   ├── game-state-loop/             # [game-state-loop — 2 คน]

@@ -125,4 +125,8 @@ export interface CoreEngine {
   getScore(): number;
   getLevel(): number;
   isGameOver(): boolean;
+  // เพิ่มใหม่ — ให้ game-state-loop อัปเดต score/level ได้โดยไม่ต้อง mutate field ตรงๆ
+  addScore(points: number): void;
+  setLevel(level: number): void;
+  getLinesClearedTotal(): number;
 }

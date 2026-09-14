@@ -1,0 +1,342 @@
+import type {
+  CoreEngine,
+  RenderSnapshot,
+  GameAction,
+  SaveData,
+  ActionResult,
+  GameStatus,
+} from '../shared/types';
+import type { KeyboardInput } from '../io-rendering/KeyboardInput';
+import { calculateScore } from './score';
+import { calculateLevel, getSpeedForLevel } from './level';
+
+/**
+ * ตัวเลือกสำหรับการตั้งค่า GameStateLoop (Dependency Injection)
+ */
+export interface GameStateLoopOptions {
+  /** Core Engine ที่ implement ตามสัญญากลาง CoreEngine */
+  engine: CoreEngine;
+  /** ฟังก์ชันสำหรับวาดการแสดงผล (เช่น ConsoleRenderer.render) */
+  renderer?: (snapshot: RenderSnapshot) => void;
+  /** โมดูลรับอินพุตจากคีย์บอร์ด */
+  input?: KeyboardInput;
+  /** Callback สำหรับบันทึกคะแนน (Persistence) */
+  onSave?: (data: SaveData) => Promise<void> | void;
+}
+
+/**
+ * ตัวประสานงานกลาง (Orchestrator) ที่เชื่อมโยง CoreEngine, KeyboardInput, และ Renderer
+ * ควบคุม Gravity Tick Loop อัตโนมัติ, การคำนวณคะแนนและเลเวล, ระบบ Pause/Resume,
+ * และการหยุดเกมเพื่อบันทึกข้อมูลคะแนนเมื่อ Game Over หรือ Quit
+ */
+export class GameStateLoop {
+  private readonly engine: CoreEngine;
+  private readonly renderer?: (snapshot: RenderSnapshot) => void;
+  private readonly input?: KeyboardInput;
+  private readonly onSave?: (data: SaveData) => Promise<void> | void;
+
+  private running: boolean = false;
+  private paused: boolean = false;
+  private isGameOverState: boolean = false;
+  private timer: ReturnType<typeof setTimeout> | null = null;
+  private saveTriggered: boolean = false;
+
+  constructor(options: GameStateLoopOptions) {
+    this.engine = options.engine;
+    this.renderer = options.renderer;
+    this.input = options.input;
+    this.onSave = options.onSave;
+  }
+
+  /**
+   * เริ่มต้นการทำงานของ Game Loop
+   */
+  public start(): void {
+    if (this.running) return;
+
+    this.running = true;
+    this.paused = false;
+    this.isGameOverState = false;
+    this.saveTriggered = false;
+
+    // หากกระดานยังไม่มี active piece ให้ spawn ชิ้นแรกเตรียมไว้
+    const engineTarget = this.engine as unknown as {
+      getActivePiece?: () => unknown;
+      activePiece?: unknown;
+    };
+    if (typeof engineTarget.getActivePiece === 'function') {
+      if (engineTarget.getActivePiece() === null) {
+        this.engine.spawnNextPiece();
+      }
+    } else if ('activePiece' in engineTarget && engineTarget.activePiece === null) {
+      this.engine.spawnNextPiece();
+    }
+
+    // หาก engine อยู่ในสถานะ gameOver ตั้งแต่เริ่ม
+    if (this.engine.isGameOver()) {
+      this.handleGameOver();
+      return;
+    }
+
+    // เริ่มรับ keyboard input
+    if (this.input) {
+      this.input.start((action: GameAction) => this.handleAction(action));
+    }
+
+    // วาดเฟรมแรก
+    this.render();
+
+    // เริ่มรอบ gravity tick
+    this.scheduleTick();
+  }
+
+  /**
+   * หยุด Game Loop และสั่งบันทึกคะแนน
+   */
+  public stop(): void {
+    if (!this.running) return;
+
+    this.running = false;
+    this.clearTickTimer();
+
+    if (this.input) {
+      this.input.stop();
+    }
+
+    this.triggerSave();
+  }
+
+  /**
+   * พักเกมชั่วคราว (หยุด tick loop และเพิกเฉยคำสั่งเคลื่อนที่)
+   */
+  public pause(): void {
+    if (!this.running || this.paused) return;
+
+    this.paused = true;
+    this.clearTickTimer();
+    this.render();
+  }
+
+  /**
+   * เล่นเกมต่อจากสถานะพัก (Resume)
+   */
+  public resume(): void {
+    if (!this.running || !this.paused) return;
+
+    this.paused = false;
+    this.render();
+    this.scheduleTick();
+  }
+
+  /**
+   * สลับระหว่าง Pause และ Resume
+   */
+  public togglePause(): void {
+    if (this.paused) {
+      this.resume();
+    } else {
+      this.pause();
+    }
+  }
+
+  /**
+   * ตรวจสอบว่า loop กำลังทำงานอยู่หรือไม่
+   */
+  public isRunning(): boolean {
+    return this.running;
+  }
+
+  /**
+   * ตรวจสอบว่าเกมอยู่ในสถานะ Pause หรือไม่
+   */
+  public isPaused(): boolean {
+    return this.paused;
+  }
+
+  /**
+   * ดึง CoreEngine ที่ใช้งานอยู่
+   */
+  public getEngine(): CoreEngine {
+    return this.engine;
+  }
+
+  /**
+   * จัดการ Action ที่ได้รับจาก KeyboardInput หรือเรียกจากภายนอก
+   */
+  public handleAction(action: GameAction): void {
+    if (!this.running) return;
+
+    if (action === 'QUIT') {
+      this.stop();
+      return;
+    }
+
+    if (action === 'PAUSE') {
+      this.togglePause();
+      return;
+    }
+
+    // หากเกมอยู่ในสถานะ Pause จะเพิกเฉยคำสั่งควบคุมตัวต่อ
+    if (this.paused) {
+      return;
+    }
+
+    let result: ActionResult | undefined;
+
+    switch (action) {
+      case 'MOVE_LEFT':
+        result = this.engine.moveLeft();
+        break;
+      case 'MOVE_RIGHT':
+        result = this.engine.moveRight();
+        break;
+      case 'SOFT_DROP':
+        result = this.engine.softDrop();
+        break;
+      case 'ROTATE':
+        result = this.engine.rotate();
+        break;
+      case 'HARD_DROP':
+        result = this.engine.hardDrop();
+        break;
+      default:
+        return;
+    }
+
+    if (result) {
+      this.processActionResult(result);
+
+      if (result.gameOver || this.engine.isGameOver()) {
+        this.handleGameOver();
+        return;
+      }
+    }
+
+    // หลัง hardDrop บล็อกล็อกทันทีและเกิดชิ้นใหม่ จึงตั้งเวลารอบถัดไปใหม่
+    if (action === 'HARD_DROP') {
+      this.scheduleTick();
+    }
+
+    this.render();
+  }
+
+  /**
+   * ประมวลผล Gravity Tick 1 รอบ
+   */
+  public tick(): ActionResult {
+    if (!this.running || this.paused) {
+      return {
+        success: false,
+        linesCleared: [],
+        gameOver: this.engine.isGameOver(),
+      };
+    }
+
+    const result = this.engine.tick();
+    this.processActionResult(result);
+
+    if (result.gameOver || this.engine.isGameOver()) {
+      this.handleGameOver();
+      return result;
+    }
+
+    this.render();
+    this.scheduleTick();
+    return result;
+  }
+
+  /**
+   * ประมวลผลคะแนนและการเลื่อนเลเวลจาก ActionResult
+   */
+  private processActionResult(result: ActionResult): void {
+    if (result.linesCleared && result.linesCleared.length > 0) {
+      const points = calculateScore(result.linesCleared.length, this.engine.getLevel());
+      this.engine.addScore(points);
+
+      const newLevel = calculateLevel(this.engine.getLinesClearedTotal());
+      this.engine.setLevel(newLevel);
+    }
+  }
+
+  /**
+   * จัดการเมื่อเกมจบลง (Game Over)
+   */
+  private handleGameOver(): void {
+    this.isGameOverState = true;
+    this.running = false;
+    this.clearTickTimer();
+
+    if (this.input) {
+      this.input.stop();
+    }
+
+    this.render('gameover');
+    this.triggerSave();
+  }
+
+  /**
+   * ส่งสัญญาณบันทึกคะแนนไปยัง persistence layer
+   */
+  private triggerSave(): void {
+    if (this.saveTriggered) return;
+    this.saveTriggered = true;
+
+    if (this.onSave) {
+      const saveData: SaveData = {
+        version: 1,
+        highScore: this.engine.getScore(),
+        level: this.engine.getLevel(),
+        linesCleared: this.engine.getLinesClearedTotal(),
+        timestamp: new Date().toISOString(),
+      };
+
+      try {
+        void this.onSave(saveData);
+      } catch (error) {
+        console.error('Failed to save game data:', error);
+      }
+    }
+  }
+
+  /**
+   * กำหนดเวลารอบ gravity tick ถัดไปตามความเร็วของเลเวล
+   */
+  private scheduleTick(): void {
+    this.clearTickTimer();
+    if (!this.running || this.paused) return;
+
+    const delay = getSpeedForLevel(this.engine.getLevel());
+    this.timer = setTimeout(() => {
+      this.tick();
+    }, delay);
+  }
+
+  /**
+   * ล้าง timer ของ gravity tick
+   */
+  private clearTickTimer(): void {
+    if (this.timer !== null) {
+      clearTimeout(this.timer);
+      this.timer = null;
+    }
+  }
+
+  /**
+   * ส่ง snapshot ล่าสุดไปยัง renderer
+   */
+  private render(forcedStatus?: GameStatus): void {
+    if (!this.renderer) return;
+
+    const snapshot = this.engine.getRenderSnapshot();
+
+    if (forcedStatus) {
+      snapshot.status = forcedStatus;
+    } else if (this.paused) {
+      snapshot.status = 'paused';
+    } else if (this.isGameOverState || this.engine.isGameOver()) {
+      snapshot.status = 'gameover';
+    }
+
+    this.renderer(snapshot);
+  }
+}

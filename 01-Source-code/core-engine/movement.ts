@@ -8,8 +8,8 @@ import type { Board, ActivePiece, ActionResult, TetrominoType } from '../shared/
 import { LOCK_DELAY_MS, MAX_LOCK_RESETS } from '../shared/constants';
 import { checkCollision } from './collision';
 import { rotatePiece, getShape } from './tetromino-shapes';
-
-export { rotatePiece } from './tetromino-shapes';
+import { applyLock } from './lock-pipeline';
+import { getWallKickOffsets } from './wall-kick-data';
 
 /**
  * Interface สำหรับ State ที่ส่งเข้าฟังก์ชันการเคลื่อนที่
@@ -23,11 +23,10 @@ export interface MovementState {
   lockTimer?: ReturnType<typeof setTimeout> | null;
   gameOver?: boolean;
   nextPiece?: TetrominoType | null;
-  score?: number;
-  level?: number;
   linesClearedTotal?: number;
   lockPiece?: () => ActionResult | void;
   spawnNextPiece?: () => ActionResult;
+  lastClearedLines?: number[];
   [key: string]: unknown;
 }
 
@@ -143,18 +142,15 @@ export function performLock(state: MovementState): ActionResult {
   state.lockResets = 0;
   state.isLocking = false;
 
-  if (state.activePiece) {
-    lockPieceToBoard(state.board, state.activePiece);
-    state.activePiece = null;
-
-    if (typeof state.spawnNextPiece === 'function') {
-      return state.spawnNextPiece();
-    }
+  if (!state.activePiece) {
+    return { success: true, linesCleared: [], gameOver: state.gameOver ?? false };
   }
+
+  applyLock(state); // <- ใช้ pipe() ตรงนี้แทน logic เดิม
 
   return {
     success: true,
-    linesCleared: [],
+    linesCleared: state.lastClearedLines ?? [],
     gameOver: state.gameOver ?? false,
   };
 }
@@ -352,8 +348,15 @@ export function softDrop<T extends MovementState = MovementState>(state: T): Mov
 }
 
 /**
- * หมุน active piece ตามเข็มนาฬิกา 90 องศา
- * เรียก checkCollision (C3) ก่อนหมุนจริงเสมอ
+ * หมุน active piece ตามเข็มนาฬิกา 90 องศา โดยใช้ระบบ SRS Wall-Kick (5-point kick table)
+ *
+ * ขั้นตอน:
+ * 1. เรียก rotatePiece() เพื่อได้ shape/rotation ใหม่ก่อน (ตำแหน่งยังเป็นตำแหน่งเดิม)
+ * 2. ดึงชุด offset จาก getWallKickOffsets() ตามชนิด piece และ rotation state เดิม (ก่อนหมุน)
+ * 3. วน checkCollision ทีละ offset ตามลำดับ — offset แรกที่ไม่ชน (ไม่ว่าจะชนกำแพง พื้น
+ *    เพดาน หรือบล็อกอื่น ก็ใช้เงื่อนไขเดียวกันหมดผ่าน checkCollision) คือคำตอบ ไม่ต้องแยก
+ *    กรณี "ชนพื้น" ออกจากกรณีอื่นแบบ logic เดิมอีกต่อไป เพราะตาราง SRS ครอบคลุมทุกทิศทางแล้ว
+ * 4. ถ้าลองครบทุก offset (สูงสุด 5 ตำแหน่ง) แล้วยังชนหมด -> หมุนไม่สำเร็จ ตำแหน่ง/rotation เดิม
  */
 export function rotate<T extends MovementState = MovementState>(state: T): MovementResult<T> {
   if (state.gameOver || !state.activePiece) {
@@ -366,48 +369,25 @@ export function rotate<T extends MovementState = MovementState>(state: T): Movem
   }
 
   const currentPiece = state.activePiece;
-  let candidatePiece = rotatePiece(currentPiece);
+  const rotatedShapePiece = rotatePiece(currentPiece);
+  const kickOffsets = getWallKickOffsets(currentPiece.type, currentPiece.rotation);
 
-  if (checkCollision(state.board, candidatePiece)) {
-    const lowestOccupiedY = candidatePiece.shape.reduce(
-      (lowestY, shapeRow, row) =>
-        shapeRow.some((cell) => cell) ? Math.max(lowestY, candidatePiece.position.y + row) : lowestY,
-      Number.NEGATIVE_INFINITY,
-    );
-    const hasNonFloorCollision = candidatePiece.shape.some((shapeRow, row) =>
-      shapeRow.some((cell, col) => {
-        if (!cell) return false;
-
-        const targetX = candidatePiece.position.x + col;
-        const targetY = candidatePiece.position.y + row;
-
-        if (targetX < 0 || targetX >= state.board[0]!.length) return true;
-        if (targetY < 0 || targetY >= state.board.length) return false;
-
-        return state.board[targetY]?.[targetX] !== 0;
-      }),
-    );
-
-    if (hasNonFloorCollision || lowestOccupiedY < state.board.length) {
-      return {
-        success: false,
-        linesCleared: [],
-        gameOver: state.gameOver ?? false,
-        state,
-      };
-    }
-
-    candidatePiece = {
-      ...candidatePiece,
+  for (const [dx, dy] of kickOffsets) {
+    const candidatePiece: ActivePiece = {
+      ...rotatedShapePiece,
       position: {
-        ...candidatePiece.position,
-        y: candidatePiece.position.y + state.board.length - 1 - lowestOccupiedY,
+        x: rotatedShapePiece.position.x + dx,
+        y: rotatedShapePiece.position.y + dy,
       },
     };
 
-    if (checkCollision(state.board, candidatePiece)) {
+    if (!checkCollision(state.board, candidatePiece)) {
+      // เจอ offset แรกที่วางได้ -> หมุนสำเร็จ
+      state.activePiece = candidatePiece;
+      handleLockDelayOnMove(state);
+
       return {
-        success: false,
+        success: true,
         linesCleared: [],
         gameOver: state.gameOver ?? false,
         state,
@@ -415,12 +395,9 @@ export function rotate<T extends MovementState = MovementState>(state: T): Movem
     }
   }
 
-  // หมุนสำเร็จ
-  state.activePiece = candidatePiece;
-  handleLockDelayOnMove(state);
-
+  // ลองครบทุก offset แล้วยังชนหมด -> หมุนไม่สำเร็จ คงตำแหน่ง/rotation เดิมไว้
   return {
-    success: true,
+    success: false,
     linesCleared: [],
     gameOver: state.gameOver ?? false,
     state,
@@ -466,3 +443,23 @@ export function hardDrop<T extends MovementState = MovementState>(state: T): Mov
     state,
   };
 }
+
+export const tick = <T extends MovementState = MovementState>(state: T): MovementResult<T> => {
+  if (state.gameOver) {
+    return {
+      success: false,
+      linesCleared: [],
+      gameOver: true,
+      state,
+    };
+  }
+  if (!state.activePiece) {
+    return state.spawnNextPiece?.() ?? {
+        success: false,
+        linesCleared: [],
+        gameOver: true,
+      };
+  } 
+
+  return softDrop(state);
+};
