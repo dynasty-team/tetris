@@ -2,30 +2,23 @@ import { TetrisEngine } from './01-Source-code/core-engine';
 import { GameStateLoop } from './01-Source-code/game-state-loop';
 import { KeyboardInput } from './01-Source-code/io-rendering/KeyboardInput';
 import { render } from './01-Source-code/io-rendering/ConsoleRenderer';
-import type { SaveData } from './01-Source-code/shared/types';
-import { validateSaveData } from './01-Source-code/persistence/schema';
-
-const SAVE_FILE = './save-data.json';
-
-async function saveGame(data: SaveData): Promise<void> {
-	await Bun.write(SAVE_FILE, JSON.stringify(data, null, 2));
-}
-
-async function loadHighScore(): Promise<number> {
-	try {
-		const savedData: unknown = await Bun.file(SAVE_FILE).json();
-		return validateSaveData(savedData) ? savedData.highScore : 0;
-	} catch {
-		return 0;
-	}
-}
+import { saveGame, loadGame } from './01-Source-code/persistence';
 
 async function main(): Promise<void> {
-	const highScore = await loadHighScore();
+	const savedData = loadGame();
+	const highScore = savedData?.highScore ?? 0;
 	const engine = new TetrisEngine();
 	const input = new KeyboardInput();
 
 	console.log(`High score: ${highScore}`);
+	console.log('Controls:');
+	console.log('  A / Left arrow   Move left');
+	console.log('  D / Right arrow  Move right');
+	console.log('  S / Down arrow   Soft drop');
+	console.log('  W / Up arrow     Rotate');
+	console.log('  Space            Hard drop');
+	console.log('  P                Pause / Resume');
+	console.log('  Q                Quit');
 
 	const gameLoop = new GameStateLoop({
 		engine,
