@@ -234,5 +234,49 @@ describe('Persistence - saveGame & SaveManager', () => {
     const diskData = loadGame(TEST_SAVE_FILE);
     expect(diskData?.highScore).toBe(450);
   });
+
+  test('เชื่อมต่อเข้ากับ GameStateLoop: บันทึกข้อมูลอัตโนมัติด้วย default onSave (saveGame) เมื่อไม่ได้ระบุ callback', () => {
+    const engine = new TestEngine();
+    engine.score = 1200;
+    engine.level = 3;
+    engine.linesClearedTotal = 10;
+
+    // ไม่ได้ส่ง onSave แต่ส่ง saveFilePath เข้าไป
+    const loop = new GameStateLoop({
+      engine,
+      saveFilePath: TEST_SAVE_FILE,
+    });
+
+    loop.start();
+    loop.handleAction('QUIT');
+
+    expect(fs.existsSync(TEST_SAVE_FILE)).toBe(true);
+    const diskData = loadGame(TEST_SAVE_FILE);
+    expect(diskData?.highScore).toBe(1200);
+    expect(diskData?.level).toBe(3);
+    expect(diskData?.linesCleared).toBe(10);
+  });
+
+  test('เชื่อมต่อเข้ากับ GameStateLoop: รองรับ onSave แบบ Async Promise และ triggerSave() ตรง', async () => {
+    let asyncSaved = false;
+    const engine = new TestEngine();
+    engine.score = 770;
+
+    const loop = new GameStateLoop({
+      engine,
+      onSave: async (data) => {
+        await Promise.resolve();
+        asyncSaved = true;
+        saveGame(data, TEST_SAVE_FILE);
+      },
+    });
+
+    loop.triggerSave();
+    await new Promise((r) => setTimeout(r, 10));
+
+    expect(asyncSaved).toBe(true);
+    const diskData = loadGame(TEST_SAVE_FILE);
+    expect(diskData?.highScore).toBe(770);
+  });
 });
 
