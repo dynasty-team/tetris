@@ -7,7 +7,7 @@ import type {
   GameStatus,
 } from '../shared/types';
 import type { KeyboardInput } from '../io-rendering/KeyboardInput';
-import { saveGame } from '../persistence';
+import { saveGame, loadGame } from '../persistence';
 import { calculateScore } from './score';
 import { calculateLevel, getSpeedForLevel } from './level';
 
@@ -23,6 +23,8 @@ export interface GameStateLoopOptions {
   input?: KeyboardInput;
   /** Callback สำหรับบันทึกคะแนน (Persistence) — หากไม่ระบุจะใช้ saveGame เป็นค่าเริ่มต้น */
   onSave?: (data: SaveData) => Promise<void> | void;
+  /** Callback สำหรับโหลดข้อมูลเกม (หากไม่ระบุจะใช้ loadGame เป็นค่าเริ่มต้น) */
+  onLoad?: () => SaveData | null;
   /** ตำแหน่งไฟล์สำหรับบันทึกข้อมูล (กรณีใช้ default onSave) */
   saveFilePath?: string;
 }
@@ -37,6 +39,7 @@ export class GameStateLoop {
   private readonly renderer?: (snapshot: RenderSnapshot) => void;
   private readonly input?: KeyboardInput;
   private readonly onSave?: (data: SaveData) => Promise<void> | void;
+  private readonly onLoad?: () => SaveData | null;
   private readonly saveFilePath?: string;
 
   private running: boolean = false;
@@ -51,7 +54,7 @@ export class GameStateLoop {
     this.input = options.input;
     this.saveFilePath = options.saveFilePath;
     this.onSave = options.onSave ?? ((data: SaveData) => saveGame(data, this.saveFilePath));
-
+    this.onLoad = options.onLoad ?? (() => loadGame(this.saveFilePath));
     const lockAwareEngine = this.engine as CoreEngine & {
       onLock?: (result: ActionResult) => void;
     };
@@ -310,9 +313,13 @@ export class GameStateLoop {
     this.saveTriggered = true;
 
     if (this.onSave) {
+      // โหลดเซฟเก่ามาดู high score สูงสุด
+      const previousData = this.loadGame();
+      const currentScore = this.engine.getScore();
+      const highScore = Math.max(previousData?.highScore ?? 0, currentScore);
       const saveData: SaveData = {
         version: 1,
-        highScore: this.engine.getScore(),
+        highScore, // <-- ใช้ค่าที่สูงสุดระหว่างรอบนี้กับรอบก่อนหน้า
         level: this.engine.getLevel(),
         linesCleared: this.engine.getLinesClearedTotal(),
         timestamp: new Date().toISOString(),
@@ -330,6 +337,17 @@ export class GameStateLoop {
       }
     }
   }
+
+  /**
+   * โหลดข้อมูลเกมที่เคยบันทึกไว้
+   */
+  public loadGame(): SaveData | null {
+    if (this.onLoad) {
+      return this.onLoad();
+    }
+    return loadGame(this.saveFilePath);
+  }
+
 
   /**
    * กำหนดเวลารอบ gravity tick ถัดไปตามความเร็วของเลเวล
