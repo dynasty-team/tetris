@@ -7,6 +7,7 @@ import type {
   GameStatus,
 } from '../shared/types';
 import type { KeyboardInput } from '../io-rendering/KeyboardInput';
+import { saveGame } from '../persistence';
 import { calculateScore } from './score';
 import { calculateLevel, getSpeedForLevel } from './level';
 
@@ -20,8 +21,10 @@ export interface GameStateLoopOptions {
   renderer?: (snapshot: RenderSnapshot) => void;
   /** โมดูลรับอินพุตจากคีย์บอร์ด */
   input?: KeyboardInput;
-  /** Callback สำหรับบันทึกคะแนน (Persistence) */
+  /** Callback สำหรับบันทึกคะแนน (Persistence) — หากไม่ระบุจะใช้ saveGame เป็นค่าเริ่มต้น */
   onSave?: (data: SaveData) => Promise<void> | void;
+  /** ตำแหน่งไฟล์สำหรับบันทึกข้อมูล (กรณีใช้ default onSave) */
+  saveFilePath?: string;
 }
 
 /**
@@ -34,6 +37,7 @@ export class GameStateLoop {
   private readonly renderer?: (snapshot: RenderSnapshot) => void;
   private readonly input?: KeyboardInput;
   private readonly onSave?: (data: SaveData) => Promise<void> | void;
+  private readonly saveFilePath?: string;
 
   private running: boolean = false;
   private paused: boolean = false;
@@ -45,7 +49,13 @@ export class GameStateLoop {
     this.engine = options.engine;
     this.renderer = options.renderer;
     this.input = options.input;
-    this.onSave = options.onSave;
+    this.saveFilePath = options.saveFilePath;
+    this.onSave = options.onSave ?? ((data: SaveData) => saveGame(data, this.saveFilePath));
+
+    const lockAwareEngine = this.engine as CoreEngine & {
+      onLock?: (result: ActionResult) => void;
+    };
+    lockAwareEngine.onLock = (result) => this.handleLockedResult(result);
   }
 
   /**
@@ -102,6 +112,11 @@ export class GameStateLoop {
     if (this.input) {
       this.input.stop();
     }
+
+    const lockAwareEngine = this.engine as CoreEngine & {
+      onLock?: (result: ActionResult) => void;
+    };
+    lockAwareEngine.onLock = undefined;
 
     this.triggerSave();
   }
@@ -258,6 +273,19 @@ export class GameStateLoop {
     }
   }
 
+  private handleLockedResult(result: ActionResult): void {
+    if (!this.running) return;
+
+    this.processActionResult(result);
+    if (result.gameOver || this.engine.isGameOver()) {
+      this.handleGameOver();
+      return;
+    }
+
+    this.render();
+    this.scheduleTick();
+  }
+
   /**
    * จัดการเมื่อเกมจบลง (Game Over)
    */
@@ -277,7 +305,7 @@ export class GameStateLoop {
   /**
    * ส่งสัญญาณบันทึกคะแนนไปยัง persistence layer
    */
-  private triggerSave(): void {
+  public triggerSave(): void {
     if (this.saveTriggered) return;
     this.saveTriggered = true;
 
@@ -291,7 +319,12 @@ export class GameStateLoop {
       };
 
       try {
-        void this.onSave(saveData);
+        const result = this.onSave(saveData);
+        if (result instanceof Promise) {
+          result.catch((error) => {
+            console.error('Failed to save game data:', error);
+          });
+        }
       } catch (error) {
         console.error('Failed to save game data:', error);
       }
