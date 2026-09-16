@@ -26,11 +26,7 @@ Tetris เป็นเกมแนว Puzzle แบบผู้เล่นค�
   - S / ↓ : Soft Drop
   - W / ↑ : Rotate
   - Space : Hard Drop
-<<<<<<< Updated upstream
   - P : Pause
-=======
-  - P : Pause / Resume
->>>>>>> Stashed changes
   - Q : Quit
   
 - ระบบเกมต้องมี:
