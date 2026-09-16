@@ -73,6 +73,8 @@ Game over
 
 ### Project Structure
 
+```text
+
 tetris/
 ├── 01-Source-code/
 │   ├── shared/
@@ -134,10 +136,11 @@ tetris/
 ├── package.json
 ├── tsconfig.json
 └── README.md
-
+```
 
 ### System Flow
 
+```text
 Keyboard Input
       |
       v
@@ -169,6 +172,7 @@ Persistence
       |
       v
 save-data.json
+```
 
 ## How to Run
 
