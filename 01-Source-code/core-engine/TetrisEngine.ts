@@ -45,6 +45,7 @@ export class TetrisEngine implements CoreEngine, MovementState {
   public isLocking: boolean;
   public lockResets: number;
   public lockTimer: ReturnType<typeof setTimeout> | null;
+  public onLock?: (result: ActionResult) => void;
   private randomizer: SevenBagRandomizer;
 
   /**
