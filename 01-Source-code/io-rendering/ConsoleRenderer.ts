@@ -1,5 +1,5 @@
 import type { ActivePiece, RenderSnapshot, Board, GameStatus, CellValue, TetrominoType } from "../shared/types"
-
+import { loadGame } from "../persistence";
 
 // =========================================================================
 // CONSTANTS — ค่าคงที่ที่ใช้ร่วมกันทั้งไฟล์
@@ -117,9 +117,12 @@ export function render(snapshot: RenderSnapshot): void {
 
     // วาด board พร้อมเส้นขอบ
     renderBoardWithBorder(displayBoard);
-
+    const savedData = loadGame();
+    const highScore = savedData?.highScore ?? 0;
+    
     // แสดงข้อมูลเสริม: piece ถัดไป, คะแนน, เลเวล
     renderNextPiece(nextPiece);
+    console.log(`High score: ${highScore}`);
     console.log(`Score: ${score}`);
     console.log(`Level: ${level}`);
     renderControls();
