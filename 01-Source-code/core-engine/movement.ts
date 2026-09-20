@@ -149,7 +149,11 @@ export function performLock(state: MovementState): ActionResult {
     return { success: true, linesCleared: [], gameOver: state.gameOver ?? false };
   }
 
-  applyLock(state); // <- ใช้ pipe() ตรงนี้แทน logic เดิม
+  // เรียก applyLock pipeline ที่ทำงานแบบ pure/immutable
+  const nextState = applyLock(state);
+
+  // Single point of mutation: อัปเดต state กลับเข้า engine ที่จุดเดียว ณ ขอบของระบบ
+  Object.assign(state, nextState);
 
   return {
     success: true,

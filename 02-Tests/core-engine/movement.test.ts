@@ -58,21 +58,35 @@ function createLockPipelineState(): MovementState {
 }
 
 describe('Movement & Lock Delay System (C4)', () => {
-  test('pipe(lockActivePieceToBoardStep, clearFullLinesStep, spawnNextPieceStep) ให้ผลตรงกับเรียกทีละขั้นเอง', () => {
+  test('pipe(lockActivePieceToBoardStep, clearFullLinesStep, spawnNextPieceStep) ให้ผลตรงกับเรียกทีละขั้นเอง และทำงานแบบ Pure/Immutable', () => {
     const baseState = createLockPipelineState();
     const spawnNextPiece = () => ({ success: true, linesCleared: [], gameOver: false });
     const stateA = { ...baseState, spawnNextPiece };
     const stateB = structuredClone(baseState);
     stateB.spawnNextPiece = spawnNextPiece;
 
-    applyLock(stateA);
+    const resultA = applyLock(stateA);
 
     const step1 = lockActivePieceToBoardStep(stateB);
     const step2 = clearFullLinesStep(step1);
-    spawnNextPieceStep(step2);
+    const resultB = spawnNextPieceStep(step2);
 
-    expect(stateA.board).toEqual(stateB.board);
-    expect(stateA.linesClearedTotal).toEqual(stateB.linesClearedTotal);
+    expect(resultA.board).toEqual(resultB.board);
+    expect(resultA.linesClearedTotal).toEqual(resultB.linesClearedTotal);
+
+    // ตรวจสอบความเป็น Pure Function / Immutability: stateA และ stateB ไม่ถูก mutate
+    expect(stateA.board).not.toBe(resultA.board);
+    expect(stateB.board).not.toBe(resultB.board);
+    expect(stateA.board).toEqual(baseState.board);
+    expect(stateB.board).toEqual(baseState.board);
+  });
+
+  test('lockActivePieceToBoardStep คืน state เดิมเมื่อ activePiece เป็น null', () => {
+    const baseState = createLockPipelineState();
+    baseState.activePiece = null;
+    const result = lockActivePieceToBoardStep(baseState);
+    expect(result.activePiece).toBeNull();
+    expect(result.board).toBe(baseState.board);
   });
 
   describe('1. Directional Movement (moveLeft, moveRight, softDrop)', () => {
