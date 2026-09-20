@@ -1,6 +1,6 @@
 // 02-Tests/core-engine/movement.test.ts
 import { describe, expect, test, beforeEach } from 'bun:test';
-import type { Board, ActivePiece, TetrominoType } from '../../01-Source-code/shared/types';
+import type { Board, ActivePiece, TetrominoType, ActionResult } from '../../01-Source-code/shared/types';
 import { createEmptyBoard, setCell } from '../../01-Source-code/shared/board-utils';
 import { LOCK_DELAY_MS, MAX_LOCK_RESETS } from '../../01-Source-code/shared/constants';
 import { getShape, rotatePiece } from '../../01-Source-code/core-engine/tetromino-shapes';
@@ -377,6 +377,140 @@ describe('Movement & Lock Delay System (C4)', () => {
       expect(hasLockedCells).toBe(true);
       // Active piece ใหม่ต้องอยู่ที่ตำแหน่ง spawn ด้านบน (y=0)
       expect(snapshot.activePiece.position.y).toBe(0);
+    });
+
+    test('หมุน piece บนกระดานที่เกือบเต็ม 2 แถว ครบ 15 ครั้ง -> ActionResult.linesCleared ไม่ว่าง และ onLock ถูกเรียกถูกต้อง', () => {
+      const engine = new TetrisEngine();
+      let onLockCalledWith = null as ActionResult | null;
+      engine.onLock = (result) => {
+        onLockCalledWith = result;
+      };
+
+      // สร้างกระดานที่เกือบเต็ม 2 แถวล่าง (แถว 18 และ 19)
+      // เว้นช่องตรงกลาง x=4, x=5 ไว้สำหรับ O piece (ขนาด 2x2)
+      let board = createEmptyBoard();
+      for (let x = 0; x < 10; x++) {
+        if (x !== 4 && x !== 5) {
+          board = setCell(board, x, 18, 'I');
+          board = setCell(board, x, 19, 'I');
+        }
+      }
+      engine.setBoard(board);
+
+      // วาง O piece ที่ตำแหน่ง x=3, y=18 (เซลล์ของ O piece จะอยู่ที่ x=4, 5 พอดี และแตะพื้นพอดี)
+      engine.setActivePiece(createTestPiece('O', 3, 18));
+      expect(engine.getRenderSnapshot().isLocking).toBe(true);
+
+      // หมุน O piece 14 ครั้งแรก (isLocking ยังเป็น true, lockResets เพิ่มขึ้น)
+      for (let i = 0; i < 14; i++) {
+        const res = engine.rotate();
+        expect(res.success).toBe(true);
+        expect(res.linesCleared).toEqual([]);
+        expect(engine.getRenderSnapshot().isLocking).toBe(true);
+      }
+      expect(engine.lockResets).toBe(14);
+      expect(onLockCalledWith).toBeNull();
+
+      // ครั้งที่ 15: ครบ MAX_LOCK_RESETS (15) -> auto-lock ทันที
+      const finalResult = engine.rotate();
+      expect(finalResult.success).toBe(true);
+      // assert ว่า linesCleared ไม่ว่าง และเคลียร์แถว 18, 19 จริง
+      expect(finalResult.linesCleared.length).toBe(2);
+      expect(finalResult.linesCleared).toEqual([18, 19]);
+
+      // onLock callback ต้องถูกเรียกด้วยผลลัพธ์ที่ถูกต้อง
+      expect(onLockCalledWith).not.toBeNull();
+      expect(onLockCalledWith?.success).toBe(true);
+      expect(onLockCalledWith?.linesCleared).toEqual([18, 19]);
+      expect(engine.getLinesClearedTotal()).toBe(2);
+    });
+
+    test('หมุน piece บนกระดานที่เกือบเต็ม 1 แถว ครบ 15 ครั้ง -> ActionResult.linesCleared ไม่ว่าง และ onLock ถูกเรียกถูกต้อง', () => {
+      const engine = new TetrisEngine();
+      let onLockCalledWith = null as ActionResult | null;
+      engine.onLock = (result) => {
+        onLockCalledWith = result;
+      };
+
+      // สร้างแถว 19 เกือบเต็ม เว้น x=4, 5 สำหรับ O piece (2x2)
+      let board = createEmptyBoard();
+      for (let x = 0; x < 10; x++) {
+        if (x !== 4 && x !== 5) {
+          board = setCell(board, x, 19, 'I');
+        }
+      }
+      engine.setBoard(board);
+
+      // วาง O piece ที่ตำแหน่ง x=4, y=18 (แถวล่างของ O piece อยู่ที่แถว 19 แตะพื้นพอดี)
+      engine.setActivePiece(createTestPiece('O', 3, 18));
+      expect(engine.getRenderSnapshot().isLocking).toBe(true);
+
+      // หมุน 14 ครั้งแรก
+      for (let i = 0; i < 14; i++) {
+        const res = engine.rotate();
+        expect(res.success).toBe(true);
+        expect(res.linesCleared).toEqual([]);
+      }
+      expect(engine.lockResets).toBe(14);
+      expect(onLockCalledWith).toBeNull();
+
+      // ครั้งที่ 15: ครบ 15 ครั้ง -> auto-lock เคลียร์แถว 19
+      const finalResult = engine.rotate();
+      expect(finalResult.success).toBe(true);
+      expect(finalResult.linesCleared.length).toBe(1);
+      expect(finalResult.linesCleared).toEqual([19]);
+
+      expect(onLockCalledWith).not.toBeNull();
+      expect(onLockCalledWith?.success).toBe(true);
+      expect(onLockCalledWith?.linesCleared).toEqual([19]);
+      expect(engine.getLinesClearedTotal()).toBe(1);
+    });
+
+    test('softDrop() เมื่อแตะพื้นและสะสม lock resets ครบ 15 ครั้ง -> ActionResult.linesCleared ไม่ว่าง และ onLock ถูกเรียกถูกต้อง', () => {
+      const engine = new TetrisEngine();
+      let onLockCalledWith = null as ActionResult | null;
+      engine.onLock = (result) => {
+        onLockCalledWith = result;
+      };
+
+      // สร้างกระดานเกือบเต็ม 2 แถวล่าง (แถว 18 และ 19)
+      let board = createEmptyBoard();
+      for (let x = 0; x < 10; x++) {
+        if (x !== 4 && x !== 5) {
+          board = setCell(board, x, 18, 'I');
+          board = setCell(board, x, 19, 'I');
+        }
+      }
+      engine.setBoard(board);
+
+      // วาง O piece ที่ x=4, y=18 (แตะพื้น)
+      engine.setActivePiece(createTestPiece('O', 3, 18));
+
+      // สะสม resets จากการหมุน 14 ครั้ง
+      for (let i = 0; i < 14; i++) {
+        engine.rotate();
+      }
+      expect(engine.lockResets).toBe(14);
+      expect(onLockCalledWith).toBeNull();
+
+      // ตั้งตำแหน่ง activePiece อยู่ที่ y=17 โดยรักษาสถานะ isLocking = true และ lockResets = 14
+      // เพื่อจำลองกรณีที่ piece อยู่ระหว่าง lock delay แล้ว softDrop ลงมาแตะพื้นเป็นครั้งที่ 15
+      const piece = engine.getActivePiece()!;
+      engine.activePiece = {
+        ...piece,
+        position: { ...piece.position, y: 17 },
+      };
+      engine.isLocking = true;
+      engine.lockResets = 14;
+
+      // softDrop เลื่อนลง 1 ช่องมาที่ y=18 และแตะพื้น นับเป็น reset ครั้งที่ 15 -> auto-lock ทันที
+      const dropResult = engine.softDrop();
+      expect(dropResult.success).toBe(true);
+      expect(dropResult.linesCleared.length).toBe(2);
+      expect(dropResult.linesCleared).toEqual([18, 19]);
+      expect(onLockCalledWith).not.toBeNull();
+      expect(onLockCalledWith?.linesCleared).toEqual([18, 19]);
+      expect(engine.getLinesClearedTotal()).toBe(2);
     });
   });
 

@@ -168,8 +168,8 @@ export function performLock(state: MovementState): ActionResult {
  * 2. ถ้าไม่แตะพื้น (เช่น เลื่อนออกจากขอบชานชาลาลงสู่ที่ว่าง):
  *    - ยกเลิก timer และปลดสถานะ isLocking
  */
-export function handleLockDelayOnMove(state: MovementState): void {
-  if (!state.activePiece) return;
+export function handleLockDelayOnMove(state: MovementState): ActionResult | null {
+  if (!state.activePiece) return null;
 
   const onGround = isPieceOnGround(state.board, state.activePiece);
 
@@ -180,7 +180,9 @@ export function handleLockDelayOnMove(state: MovementState): void {
 
       if (nextResets >= MAX_LOCK_RESETS) {
         // ขยับ/หมุนสะสมถึง MAX_LOCK_RESETS (15 ครั้ง) -> ล็อกทันที
-        performLock(state);
+        const result = performLock(state);
+        state.onLock?.(result);
+        return result;
       } else {
         // รีเซ็ตเวลานับ 500ms ใหม่
         restartLockTimer(state);
@@ -193,6 +195,8 @@ export function handleLockDelayOnMove(state: MovementState): void {
     // ลอยอยู่ในอากาศ ไม่แตะพื้น -> ปลดสถานะ lock delay
     cancelLockTimer(state);
   }
+
+  return null;
 }
 
 /**
@@ -230,12 +234,12 @@ export function moveLeft<T extends MovementState = MovementState>(state: T): Mov
 
   // ขยับสำเร็จ
   state.activePiece = candidatePiece;
-  handleLockDelayOnMove(state);
+  const lockResult = handleLockDelayOnMove(state);
 
   return {
     success: true,
-    linesCleared: [],
-    gameOver: state.gameOver ?? false,
+    linesCleared: lockResult ? lockResult.linesCleared : [],
+    gameOver: lockResult ? lockResult.gameOver : (state.gameOver ?? false),
     state,
   };
 }
@@ -275,12 +279,12 @@ export function moveRight<T extends MovementState = MovementState>(state: T): Mo
 
   // ขยับสำเร็จ
   state.activePiece = candidatePiece;
-  handleLockDelayOnMove(state);
+  const lockResult = handleLockDelayOnMove(state);
 
   return {
     success: true,
-    linesCleared: [],
-    gameOver: state.gameOver ?? false,
+    linesCleared: lockResult ? lockResult.linesCleared : [],
+    gameOver: lockResult ? lockResult.gameOver : (state.gameOver ?? false),
     state,
   };
 }
@@ -326,6 +330,7 @@ export function softDrop<T extends MovementState = MovementState>(state: T): Mov
   state.activePiece = candidatePiece;
 
   // ตรวจสอบสถานะการแตะพื้นหลังการตกลงมา 1 ช่อง
+  let lockResult: ActionResult | null = null;
   if (isPieceOnGround(state.board, state.activePiece)) {
     if (!state.isLocking) {
       startLockTimer(state);
@@ -333,7 +338,8 @@ export function softDrop<T extends MovementState = MovementState>(state: T): Mov
       const nextResets = (state.lockResets ?? 0) + 1;
       state.lockResets = nextResets;
       if (nextResets >= MAX_LOCK_RESETS) {
-        performLock(state);
+        lockResult = performLock(state);
+        state.onLock?.(lockResult);
       } else {
         restartLockTimer(state);
       }
@@ -344,8 +350,8 @@ export function softDrop<T extends MovementState = MovementState>(state: T): Mov
 
   return {
     success: true,
-    linesCleared: [],
-    gameOver: state.gameOver ?? false,
+    linesCleared: lockResult ? lockResult.linesCleared : [],
+    gameOver: lockResult ? lockResult.gameOver : (state.gameOver ?? false),
     state,
   };
 }
@@ -387,12 +393,12 @@ export function rotate<T extends MovementState = MovementState>(state: T): Movem
     if (!checkCollision(state.board, candidatePiece)) {
       // เจอ offset แรกที่วางได้ -> หมุนสำเร็จ
       state.activePiece = candidatePiece;
-      handleLockDelayOnMove(state);
+      const lockResult = handleLockDelayOnMove(state);
 
       return {
         success: true,
-        linesCleared: [],
-        gameOver: state.gameOver ?? false,
+        linesCleared: lockResult ? lockResult.linesCleared : [],
+        gameOver: lockResult ? lockResult.gameOver : (state.gameOver ?? false),
         state,
       };
     }
