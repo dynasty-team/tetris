@@ -2,6 +2,7 @@ import { TetrisEngine } from './01-Source-code/core-engine';
 import { GameStateLoop } from './01-Source-code/game-state-loop';
 import { KeyboardInput } from './01-Source-code/io-rendering/KeyboardInput';
 import { render } from './01-Source-code/io-rendering/ConsoleRenderer';
+<<<<<<< HEAD
 import type { SaveData } from './01-Source-code/shared/types';
 import { validateSaveData } from './01-Source-code/persistence/schema';
 
@@ -28,6 +29,15 @@ async function main(): Promise<void> {
 	console.log(`High score: ${highScore}`);
 	console.log('Controls: A/D or arrows move, W/up rotates, S/down soft drops, Space hard drops, Q quits.');
 
+=======
+import { saveGame, loadGame } from './01-Source-code/persistence';
+
+async function main(): Promise<void> {
+	const savedData = loadGame();
+	const highScore = savedData?.highScore ?? 0;
+	const engine = new TetrisEngine();
+	const input = new KeyboardInput();
+>>>>>>> origin/main
 	const gameLoop = new GameStateLoop({
 		engine,
 		input,

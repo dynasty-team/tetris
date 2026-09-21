@@ -1,8 +1,5 @@
 import type { GameAction } from '../shared/types';
 
-const DEFAULT_DAS_MS = 170;
-const DEFAULT_ARR_MS = 50;
-
 export type RepeatableAction = 'MOVE_LEFT' | 'MOVE_RIGHT' | 'SOFT_DROP';
 export type ActionHandler = (action: GameAction) => void;
 
@@ -23,7 +20,9 @@ export interface InputStream {
 }
 
 export interface KeyboardInputOptions {
+	/** @deprecated Terminal input is handled as one action per key press. */
 	dasMs?: number;
+	/** @deprecated Terminal input is handled as one action per key press. */
 	arrMs?: number;
 	input?: InputStream;
 	terminal?: TerminalRawMode;
@@ -34,6 +33,7 @@ const KEY_ACTIONS: Record<string, GameAction> = {
 	d: 'MOVE_RIGHT',
 	s: 'SOFT_DROP',
 	w: 'ROTATE',
+	p: 'PAUSE',
 	' ': 'HARD_DROP',
 	q: 'QUIT',
 	'\u001b[D': 'MOVE_LEFT',
@@ -42,22 +42,11 @@ const KEY_ACTIONS: Record<string, GameAction> = {
 	'\u001b[A': 'ROTATE',
 };
 
-const REPEATABLE_ACTIONS = new Set<RepeatableAction>([
-	'MOVE_LEFT',
-	'MOVE_RIGHT',
-	'SOFT_DROP',
-]);
-
-/** Converts raw terminal input into game actions and manages DAS/ARR. */
+/** Converts raw terminal input into one game action per key press. */
 export class KeyboardInput {
 	private readonly input: InputStream;
 	private readonly terminal: TerminalRawMode | undefined;
-	private readonly dasMs: number;
-	private readonly arrMs: number;
 	private onAction: ActionHandler | undefined;
-	private activeRepeat: RepeatableAction | undefined;
-	private dasTimer: ReturnType<typeof setTimeout> | undefined;
-	private arrTimer: ReturnType<typeof setInterval> | undefined;
 	private reader: InputReader | undefined;
 	private escapeSequence = '';
 	private started = false;
@@ -67,8 +56,6 @@ export class KeyboardInput {
 		this.terminal =
 			options.terminal ??
 			(typeof process !== 'undefined' && process.stdin?.isTTY ? process.stdin : undefined);
-		this.dasMs = options.dasMs ?? DEFAULT_DAS_MS;
-		this.arrMs = options.arrMs ?? DEFAULT_ARR_MS;
 	}
 
 	public start(onAction: ActionHandler): void {
@@ -89,16 +76,15 @@ export class KeyboardInput {
 		void this.readInput();
 	}
 
-	/** Stops DAS/ARR when the terminal reports that the active key was released. */
+	/** Kept for callers that explicitly release the current input state. */
 	public release(): void {
-		this.clearRepeat();
+		return;
 	}
 
 	public stop(): void {
 		if (!this.started) return;
 
 		this.started = false;
-		this.clearRepeat();
 		this.onAction = undefined;
 		void this.reader?.cancel();
 		this.reader = undefined;
@@ -129,11 +115,15 @@ export class KeyboardInput {
 	private handleInput = (chunk: Uint8Array | string): void => {
 		const input = typeof chunk === 'string' ? chunk : new TextDecoder().decode(chunk);
 		this.escapeSequence += input;
+		let lastAction: GameAction | undefined;
 
 		while (this.escapeSequence.length > 0) {
 			const parsed = this.readNextAction();
 			if (parsed === undefined) return;
-			if (parsed.action !== undefined) this.handleAction(parsed.action);
+			if (parsed.action !== undefined && parsed.action !== lastAction) {
+				this.handleAction(parsed.action);
+				lastAction = parsed.action;
+			}
 			this.escapeSequence = this.escapeSequence.slice(parsed.consumed);
 		}
 	};
@@ -154,33 +144,6 @@ export class KeyboardInput {
 	private handleAction(action: GameAction | undefined): void {
 		if (action === undefined) return;
 
-		if (REPEATABLE_ACTIONS.has(action as RepeatableAction)) {
-			this.startRepeat(action as RepeatableAction);
-		} else {
-			this.clearRepeat();
-			this.onAction?.(action);
-		}
-	}
-
-	private startRepeat(action: RepeatableAction): void {
-		if (this.activeRepeat === action) return;
-		this.clearRepeat();
-		this.activeRepeat = action;
 		this.onAction?.(action);
-		this.dasTimer = setTimeout(() => {
-			if (this.activeRepeat !== action) return;
-			this.onAction?.(action);
-			this.arrTimer = setInterval(() => {
-				if (this.activeRepeat === action) this.onAction?.(action);
-			}, this.arrMs);
-		}, this.dasMs);
-	}
-
-	private clearRepeat(): void {
-		if (this.dasTimer !== undefined) clearTimeout(this.dasTimer);
-		if (this.arrTimer !== undefined) clearInterval(this.arrTimer);
-		this.dasTimer = undefined;
-		this.arrTimer = undefined;
-		this.activeRepeat = undefined;
 	}
 }

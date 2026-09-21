@@ -21,6 +21,7 @@ export interface MovementState {
   isLocking: boolean;
   lockResets?: number;
   lockTimer?: ReturnType<typeof setTimeout> | null;
+  onLock?: (result: ActionResult) => void;
   gameOver?: boolean;
   nextPiece?: TetrominoType | null;
   linesClearedTotal?: number;
@@ -109,7 +110,8 @@ export function startLockTimer(state: MovementState, onTimeout?: () => void): vo
   state.lockResets = state.lockResets ?? 0;
 
   state.lockTimer = setTimeout(() => {
-    performLock(state);
+    const result = performLock(state);
+    state.onLock?.(result);
     if (onTimeout) {
       onTimeout();
     }
@@ -127,7 +129,8 @@ export function restartLockTimer(state: MovementState, onTimeout?: () => void): 
   state.isLocking = true;
 
   state.lockTimer = setTimeout(() => {
-    performLock(state);
+    const result = performLock(state);
+    state.onLock?.(result);
     if (onTimeout) {
       onTimeout();
     }
