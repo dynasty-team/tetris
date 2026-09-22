@@ -1,4 +1,4 @@
-import type { GameAction } from '../shared/types';
+import type { GameAction, InputSource } from '../shared/types';
 
 export type RepeatableAction = 'MOVE_LEFT' | 'MOVE_RIGHT' | 'SOFT_DROP';
 export type ActionHandler = (action: GameAction) => void;
@@ -45,7 +45,7 @@ const KEY_ACTIONS: Record<string, GameAction> = {
 /**
  * จัดการ Keyboard Input ใน Raw Mode และแปลงเป็น GameAction
  */
-export class KeyboardInput {
+export class KeyboardInput implements InputSource{
 	private readonly input: InputStream;
 	private readonly terminal: TerminalRawMode | undefined;
 	private onAction: ActionHandler | undefined;
