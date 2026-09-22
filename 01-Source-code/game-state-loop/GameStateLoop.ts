@@ -10,6 +10,8 @@ import type { KeyboardInput } from '../io-rendering/KeyboardInput';
 import { saveGame, loadGame } from '../persistence';
 import { calculateScore } from './score';
 import { calculateLevel, getSpeedForLevel } from './level';
+import { cancelLockTimer, startLockTimer } from '../core-engine/movement';
+import type { MovementState } from '../core-engine/movement';
 
 /**
  * ตัวเลือกสำหรับการตั้งค่า GameStateLoop (Dependency Injection)
@@ -47,6 +49,8 @@ export class GameStateLoop {
   private isGameOverState: boolean = false;
   private timer: ReturnType<typeof setTimeout> | null = null;
   private saveTriggered: boolean = false;
+  private wasLockingBeforePause: boolean = false;
+  private lockHandledDuringAction: boolean = false;
 
   constructor(options: GameStateLoopOptions) {
     this.engine = options.engine;
@@ -71,6 +75,8 @@ export class GameStateLoop {
     this.paused = false;
     this.isGameOverState = false;
     this.saveTriggered = false;
+    this.wasLockingBeforePause = false;
+    this.lockHandledDuringAction = false;
 
     // หากกระดานยังไม่มี active piece ให้ spawn ชิ้นแรกเตรียมไว้
     const engineTarget = this.engine as unknown as {
@@ -111,6 +117,9 @@ export class GameStateLoop {
 
     this.running = false;
     this.clearTickTimer();
+    this.clearLockTimer();
+    this.wasLockingBeforePause = false;
+    this.lockHandledDuringAction = false;
 
     if (this.input) {
       this.input.stop();
@@ -132,6 +141,18 @@ export class GameStateLoop {
 
     this.paused = true;
     this.clearTickTimer();
+
+    const lockAwareEngine = this.engine as unknown as {
+      lockTimer?: ReturnType<typeof setTimeout> | null;
+      isLocking?: boolean;
+    };
+    if (lockAwareEngine.lockTimer || lockAwareEngine.isLocking) {
+      this.wasLockingBeforePause = true;
+      this.clearLockTimer();
+    } else {
+      this.wasLockingBeforePause = false;
+    }
+
     this.render();
   }
 
@@ -143,6 +164,21 @@ export class GameStateLoop {
 
     this.paused = false;
     this.render();
+
+    if (this.wasLockingBeforePause) {
+      this.wasLockingBeforePause = false;
+      const engineTarget = this.engine as unknown as {
+        board?: unknown;
+        activePiece?: unknown;
+        startLockTimer?: () => void;
+      };
+      if (typeof engineTarget.startLockTimer === 'function') {
+        engineTarget.startLockTimer();
+      } else if (engineTarget.board && engineTarget.activePiece) {
+        startLockTimer(this.engine as unknown as MovementState);
+      }
+    }
+
     this.scheduleTick();
   }
 
@@ -199,6 +235,7 @@ export class GameStateLoop {
       return;
     }
 
+    this.lockHandledDuringAction = false;
     let result: ActionResult | undefined;
 
     switch (action) {
@@ -222,12 +259,18 @@ export class GameStateLoop {
     }
 
     if (result) {
-      this.processActionResult(result);
+      if (!this.lockHandledDuringAction) {
+        this.processActionResult(result);
+      }
 
       if (result.gameOver || this.engine.isGameOver()) {
         this.handleGameOver();
         return;
       }
+    }
+
+    if (this.lockHandledDuringAction) {
+      return;
     }
 
     // หลัง hardDrop บล็อกล็อกทันทีและเกิดชิ้นใหม่ จึงตั้งเวลารอบถัดไปใหม่
@@ -277,8 +320,9 @@ export class GameStateLoop {
   }
 
   private handleLockedResult(result: ActionResult): void {
-    if (!this.running) return;
+    if (!this.running || this.paused) return;
 
+    this.lockHandledDuringAction = true;
     this.processActionResult(result);
     if (result.gameOver || this.engine.isGameOver()) {
       this.handleGameOver();
@@ -296,6 +340,8 @@ export class GameStateLoop {
     this.isGameOverState = true;
     this.running = false;
     this.clearTickTimer();
+    this.clearLockTimer();
+    this.wasLockingBeforePause = false;
 
     if (this.input) {
       this.input.stop();
@@ -369,6 +415,22 @@ export class GameStateLoop {
     if (this.timer !== null) {
       clearTimeout(this.timer);
       this.timer = null;
+    }
+  }
+
+  /**
+   * ล้าง timer ของ lock delay ใน engine
+   */
+  private clearLockTimer(): void {
+    const lockAwareEngine = this.engine as unknown as {
+      lockTimer?: ReturnType<typeof setTimeout> | null;
+      isLocking?: boolean;
+      cancelLockTimer?: () => void;
+    };
+    if (typeof lockAwareEngine.cancelLockTimer === 'function') {
+      lockAwareEngine.cancelLockTimer();
+    } else {
+      cancelLockTimer(lockAwareEngine as MovementState);
     }
   }
 
