@@ -39,6 +39,7 @@ export class TetrisEngine implements CoreEngine, MovementState {
   public activePiece: ActivePiece | null;
   private score: number;
   private level: number;
+  private highScore: number;
   public linesClearedTotal: number;
   public nextPiece: TetrominoType | null;
   public gameOver: boolean;
@@ -58,6 +59,7 @@ export class TetrisEngine implements CoreEngine, MovementState {
     this.activePiece = null;
     this.score = 0;
     this.level = 1;
+    this.highScore = 0;
     this.linesClearedTotal = 0;
     this.gameOver = false;
     this.isLocking = false;
@@ -224,6 +226,7 @@ export class TetrisEngine implements CoreEngine, MovementState {
       nextPiece: this.nextPiece ?? 'I',
       score: this.score,
       level: this.level,
+      highScore: this.highScore,
       linesClearedTotal: this.linesClearedTotal,
       status,
       isLocking: this.isLocking,
