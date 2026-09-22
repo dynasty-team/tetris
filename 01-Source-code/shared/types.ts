@@ -98,12 +98,14 @@ export interface InputSource {
 // ---------- Persistence ----------
 
 export interface SaveData {
-  /** เริ่มที่ 1 — เพิ่มไว้ตั้งแต่แรกกันปัญหาตอนแก้ schema ทีหลัง */
   version: number;
+  /** คะแนนสูงสุดตลอดกาล */
   highScore: number;
+  /** level ณ ตอนที่ทำ highScore นี้ได้ (ไม่ใช่ level ของตาล่าสุด) */
   level: number;
+  /** จำนวนแถวที่เคลียร์ได้ในตาที่ทำ highScore นี้ */
   linesCleared: number;
-  /** ISO string */
+  /** เวลาที่ทำสถิตินี้ได้ */
   timestamp: string;
 }
 
