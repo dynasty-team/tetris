@@ -8,7 +8,7 @@ import type { SaveData, CoreEngine, ActionResult, RenderSnapshot } from '../../0
 import { GameStateLoop } from '../../01-Source-code/game-state-loop';
 import { mockRenderSnapshot } from '../../01-Source-code/shared/mock-engine';
 
-const TEST_DIR = './test-temp-persistence';
+const TEST_DIR = path.resolve(__dirname, 'test-temp-persistence');
 const TEST_SAVE_FILE = path.join(TEST_DIR, 'test-save.json');
 
 class TestEngine implements CoreEngine {

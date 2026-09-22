@@ -1,0 +1,108 @@
+// 02-Tests/io-rendering/keyboard-input.test.ts
+import { describe, expect, test } from 'bun:test';
+import { KeyboardInput, type InputStream, type TerminalRawMode } from '../../01-Source-code/io-rendering/KeyboardInput';
+import type { GameAction } from '../../01-Source-code/shared/types';
+
+class MockInputStream implements InputStream {
+  private chunks: Uint8Array[] = [];
+  private cancelled = false;
+
+  constructor(inputs: string[]) {
+    const encoder = new TextEncoder();
+    this.chunks = inputs.map((s) => encoder.encode(s));
+  }
+
+  public stream() {
+    return {
+      getReader: () => ({
+        read: async () => {
+          if (this.cancelled || this.chunks.length === 0) {
+            return { done: true, value: undefined };
+          }
+          const value = this.chunks.shift()!;
+          return { done: false, value };
+        },
+        cancel: async () => {
+          this.cancelled = true;
+        },
+      }),
+    };
+  }
+}
+
+describe('KeyboardInput (KeyboardInput.ts)', () => {
+  test('แปลงปุ่มตัวอักษรเป็น GameAction ได้ถูกต้อง (a, d, s, w, space, p, q)', async () => {
+    const actions: GameAction[] = [];
+    const mockInput = new MockInputStream(['a', 'd', 's', 'w', ' ', 'p', 'q']);
+    const mockTerminal: TerminalRawMode = {
+      isTTY: true,
+      setRawMode: () => {},
+    };
+
+    const keyboard = new KeyboardInput({
+      input: mockInput,
+      terminal: mockTerminal,
+    });
+
+    keyboard.start((action) => {
+      actions.push(action);
+    });
+
+    // รอ async reader ประมวลผล
+    await new Promise((r) => setTimeout(r, 30));
+
+    expect(actions).toEqual([
+      'MOVE_LEFT',
+      'MOVE_RIGHT',
+      'SOFT_DROP',
+      'ROTATE',
+      'HARD_DROP',
+      'PAUSE',
+      'QUIT',
+    ]);
+
+    keyboard.stop();
+  });
+
+  test('แปลง ANSI Escape Sequences ของปุ่มลูกศรได้ถูกต้อง', async () => {
+    const actions: GameAction[] = [];
+    // Up, Down, Left, Right arrows
+    const mockInput = new MockInputStream(['\u001b[A', '\u001b[B', '\u001b[D', '\u001b[C']);
+    const mockTerminal: TerminalRawMode = {
+      isTTY: true,
+      setRawMode: () => {},
+    };
+
+    const keyboard = new KeyboardInput({
+      input: mockInput,
+      terminal: mockTerminal,
+    });
+
+    keyboard.start((action) => {
+      actions.push(action);
+    });
+
+    await new Promise((r) => setTimeout(r, 30));
+
+    expect(actions).toEqual([
+      'ROTATE',
+      'SOFT_DROP',
+      'MOVE_LEFT',
+      'MOVE_RIGHT',
+    ]);
+
+    keyboard.stop();
+  });
+
+  test('stop() ปิดการทำงานและยกเลิก reader ได้อย่างปลอดภัย', () => {
+    const mockInput = new MockInputStream([]);
+    const keyboard = new KeyboardInput({ input: mockInput });
+
+    expect(() => {
+      keyboard.start(() => {});
+      keyboard.release();
+      keyboard.stop();
+      keyboard.stop(); // เรียกซ้ำได้ไม่ crash
+    }).not.toThrow();
+  });
+});

@@ -6,7 +6,13 @@
   "scripts": {
     "start": "bun run index.ts",
     "test": "bun test",
-    "test:coverage": "bun test --coverage"
+    "test:coverage": "bun test --coverage",
+    "test:coverage": "bun test --coverage",
+    "test:core": "bun test 02-Tests/core-engine",
+    "test:gameloop": "bun test 02-Tests/game-state-loop",
+    "test:persistence": "bun test 02-Tests/persistence",
+    "test:shared": "bun test 02-Tests/shared",
+    "test:io": "bun test 02-Tests/io-rendering"
   },
   "devDependencies": {
     "@types/bun": "latest"
