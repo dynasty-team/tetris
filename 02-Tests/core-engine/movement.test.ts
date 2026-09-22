@@ -640,4 +640,27 @@ describe('Movement & Lock Delay System (C4)', () => {
       expect(rotRes.success).toBe(false);
     });
   });
+
+  describe('8. Type Safety - No Index Signature', () => {
+    test('TetrisEngine และ MovementState มี explicit properties และไม่มี index signature', () => {
+      const engine = new TetrisEngine();
+      expect(engine.lastClearedLines).toEqual([]);
+
+      // ทดสอบ compile-time type safety ด้วย @ts-expect-error
+      // หากมีการใส่ [key: string]: unknown กลับเข้ามา บรรทัดเหล่านี้จะเกิด unused @ts-expect-error error ทันที
+      // @ts-expect-error property 'scoree' does not exist on TetrisEngine
+      engine.scoree = 10;
+
+      const state: MovementState = {
+        board: engine.board,
+        activePiece: null,
+        isLocking: false,
+      };
+
+      // @ts-expect-error property 'invalidProp' does not exist on MovementState
+      state.invalidProp = 'test';
+
+      expect(engine.getScore()).toBe(0);
+    });
+  });
 });
