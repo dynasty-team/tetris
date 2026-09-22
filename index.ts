@@ -9,11 +9,25 @@ async function main(): Promise<void> {
 	const highScore = savedData?.highScore ?? 0;
 	const engine = new TetrisEngine();
 	const input = new KeyboardInput();
+
+	console.log(`High score: ${highScore}`);
+	console.log('Controls:');
+	console.log('  A / Left arrow   Move left');
+	console.log('  D / Right arrow  Move right');
+	console.log('  S / Down arrow   Soft drop');
+	console.log('  W / Up arrow     Rotate');
+	console.log('  Space            Hard drop');
+	console.log('  P                Pause / Resume');
+	console.log('  Q                Quit');
+
 	const gameLoop = new GameStateLoop({
 		engine,
 		input,
 		renderer: render,
-		onSave: saveGame,
+		onSave: (data) => saveGame({
+			...data,
+			highScore: Math.max(highScore, data.highScore),
+		}),
 	});
 
 	gameLoop.start();

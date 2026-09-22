@@ -154,6 +154,10 @@ Game State / Snapshot
       ˅
 Console Renderer
 
+- Persistence Layer (Save System):
+  - `save-data.json` / `save-data.example.json`: จัดเก็บข้อมูลสถิติคะแนนสูงสุดตลอดกาล (High Score Record) ตาม `SaveData` schema
+  - ทุก field ใน record (`highScore`, `level`, `linesCleared`, `timestamp`) อธิบายบริบทของ "ตาที่ทำ highScore นั้นได้" ร่วมกันเสมอ ไม่ใช่สถิติของตาล่าสุด
+
 ## How to Run
 
 1. Install bun
