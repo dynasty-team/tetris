@@ -67,6 +67,7 @@ export interface RenderSnapshot {
   nextPiece: TetrominoType;
   score: number;
   level: number;
+  highScore: number;
   linesClearedTotal: number;
   status: GameStatus;
   /**
