@@ -129,6 +129,7 @@ tetris/
 │   └── sample.test.ts
 │
 ├── 03-Documentation/
+│       └── classdiagram.md
 ├── 04-Demo/
 ├── index.ts
 ├── package.json
@@ -139,7 +140,8 @@ tetris/
 ### System Flow
 
 ```text
-Keyboard Input
+KeyboardInput
+(implements InputSource)
       |
       v
 Game State Loop
@@ -175,7 +177,7 @@ save-data.json
 
 | หัวข้อ | ไฟล์ | ใช้ทำอะไร |
 |---|---|---|
-| OOP: Interface | `shared/types.ts` | กำหนดว่าระบบหลักต้องมีการทำงานอะไรบ้าง |
+| OOP: Interface | `shared/types.ts` | กำหนด `CoreEngine` และ `InputSource` เป็น contract กลางระหว่างแต่ละส่วนของระบบ |
 | OOP: Class implements Interface | `core-engine/TetrisEngine.ts` | ใช้คลาส `TetrisEngine` เป็นตัวทำงานหลักของเกม |
 | FP: Pure Function | `core-engine/line-clear.ts` | ใช้ตรวจและลบแถวที่เต็ม โดยไม่แก้ข้อมูลเดิมโดยตรง |
 | FP: Higher-order Function | `shared/utils.ts` | ใช้ฟังก์ชันที่รับฟังก์ชันอื่นเข้ามาทำงานร่วมกัน |
