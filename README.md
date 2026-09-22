@@ -175,6 +175,11 @@ Persistence
       v
 save-data.json
 ```
+
+#### Persistence Layer (Save System)
+- `save-data.json` / `save-data.example.json`: จัดเก็บข้อมูลสถิติคะแนนสูงสุดตลอดกาล (High Score Record) ตาม `SaveData` schema
+- ทุก field ใน record (`highScore`, `level`, `linesCleared`, `timestamp`) เป็นบริบทของ **"ตาที่ทำ highScore นั้นได้"** ร่วมกันเสมอ (ไม่ใช่สถิติของตาล่าสุดที่เพิ่งเล่นจบ) เพื่อป้องกันข้อมูลไม่สอดคล้องกัน
+
 ### OOP & FP Implementation
 
 | หัวข้อ | ไฟล์ | ใช้ทำอะไร |
