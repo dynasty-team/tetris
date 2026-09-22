@@ -79,10 +79,16 @@ mermaid
         +isLocking : boolean
     }
 
+    class InputSource {
+        <<interface>>
+        +start(onAction : ActionHandler) : void
+        +stop() : void
+    }
+
     class GameStateLoop {
         -engine : CoreEngine
         -renderer : Function
-        -input : KeyboardInput
+        -input : InputSource
         -running : boolean
         -paused : boolean
         -isGameOverState : boolean
@@ -121,9 +127,10 @@ mermaid
     }
 
     CoreEngine <|.. TetrisEngine : implements
+    InputSource <|.. KeyboardInput : implements
 
     GameStateLoop --> CoreEngine : controls
-    KeyboardInput --> GameStateLoop : sends actions
+    GameStateLoop --> InputSource : depends on
 
     TetrisEngine --> SevenBagRandomizer : uses
     TetrisEngine --> ActivePiece : manages
@@ -134,4 +141,5 @@ mermaid
 
     ConsoleRenderer --> RenderSnapshot : renders
     ConsoleRenderer --> Persistence : loads high score
+
 ```

@@ -2,25 +2,27 @@
 
 
 ## Game Overview
-Tetris เป็นเกมแนว Puzzle แบบผู้เล่นคนเดียว โดยผู้เล่นจะต้องควบคุม Tetromino ที่ตกลงมาจากด้านบน และจัดเรียงให้เต็มแถวบน Board 
-ขนาด 10 × 20 ช่อง ภายในเกมมี Tetromino ทั้งหมด 7 รูปแบบ ได้แก่ I, O, T, S, Z, J และ L ผู้เล่นสามารถขยับ หมุนเปลี่ยนทิศทาง และเร่งการตกของชิ้นส่วน เพื่อจัดวางให้เหมาะสม เมื่อสามารถเติมแถวได้ครบ แถวนั้นจะถูกลบออกและผู้เล่นจะได้รับคะแนน
+Tetris เป็นเกมแนว Puzzle เรียงชิ้นส่วนบล็อกรูปทรงต่างๆ (Tetromino)แบบผู้เล่นคนเดียว 
+ขนาด 10 × 20 ช่อง ภายในเกมมี ชิ้นส่วนบล็อกรูปทรง(Tetromino) ทั้งหมด 7 รูป ex. I, O, T, S, Z, J และ L 
+ผู้เล่นสามารถขยับ เลื่อนซ้าย/ขวา หมุนเปลี่ยนทิศทางและเร่งการตกของชิ้นส่วนบล็อกให้ตกลงเพื่อให้เข้ากับช่องว่าง  
+เมื่อสามารถเติมแถวได้ครบ แถวนั้นจะถูกลบออกและผู้เล่นจะได้รับคะแนน
 เกมมีระบบ Score, Level และความเร็วในการตกที่เพิ่มขึ้นตาม Level โดยเกมจะจบเมื่อไม่สามารถสร้าง Tetromino ชิ้นใหม่ลงบน Board ได้
 โปรเจกต์นี้พัฒนาเป็น Console Game โดยแบ่งส่วนการทำงานออกเป็น Game Logic, Input, Rendering และ Save System เพื่อให้แต่ละส่วนสามารถพัฒนาและทดสอบได้ง่ายขึ้น
 
 ## Requirements 
 
-- Board ขนาด 10 × 20 รองรับ Empty Cell และ Occupied Cell
+- Board ขนาด 10 × 20 รองรับ ช่องว่าง ยังไม่มีชิ้นส่วนบล็อก(Empty Cell) และ ช่องที่มีชิ้นส่วนบล็อกอยู่แล้ว(Occupied Cell)
 
-- รองรับ Tetromino ทั้ง 7 รูปแบบ:
+- รองรับ ชิ้นส่วนบล็อก(Tetromino) ทั้ง 7 รูปแบบ
   I, O, T, S, Z, J, L
 
-- แต่ละ Piece ต้องรองรับ:
+- แต่ละ Piece ต้องรองรับ
   - Position
   - Rotation
   - Movement
   - Collision Detection
 
-- รองรับ Keyboard Control:
+- รองรับ Keyboard Control
   - A / ← : Move Left
   - D / → : Move Right
   - S / ↓ : Soft Drop
@@ -29,7 +31,7 @@ Tetris เป็นเกมแนว Puzzle แบบผู้เล่นค�
   - P : Pause
   - Q : Quit
   
-- ระบบเกมต้องมี:
+- ระบบเกมต้องมี
   - Score
   - Level
   - Increasing Speed
@@ -37,7 +39,7 @@ Tetris เป็นเกมแนว Puzzle แบบผู้เล่นค�
   - ใช้ระบบ 7-bag Randomizer
 
 
-- Game Over เมื่อ Tetromino ใหม่ไม่สามารถ Spawn ได้
+- Game Over เมื่อ ชิ้นส่วนบล็อก(Tetromino) ชิ้นใหม่ไม่สามารถ Spawn ได้
 ## Game Rules
 
 - วิธีการคำนวณคะแนน
@@ -64,7 +66,7 @@ Tetris เป็นเกมแนว Puzzle แบบผู้เล่นค�
 
 
 Game over
-เกมจะจบลงเมื่อ Tetromino ชิ้นใหม่ไม่สามารถ Spawn ในตำแหน่งเริ่มต้นได้ เนื่องจากพื้นที่ด้านบนของ Board ถูกใช้ไปแล้ว
+เกมจะจบลงเมื่อ ชิ้นส่วนบล็อก(Tetromino) สูงขึ้นจนชนขอบด้านบนและไม่มีที่ว่างให้ชิ้นส่วนบล็อกใหม่ spawn ลงมาถือว่าเกม over ทันที  
 ## Architecture
 
 ### Project Structure
@@ -127,6 +129,7 @@ tetris/
 │   └── sample.test.ts
 │
 ├── 03-Documentation/
+│       └── classdiagram.md
 ├── 04-Demo/
 ├── index.ts
 ├── package.json
@@ -137,7 +140,8 @@ tetris/
 ### System Flow
 
 ```text
-Keyboard Input
+KeyboardInput
+(implements InputSource)
       |
       v
 Game State Loop
@@ -169,38 +173,74 @@ Persistence
       v
 save-data.json
 ```
+### OOP & FP Implementation
+
+| หัวข้อ | ไฟล์ | ใช้ทำอะไร |
+|---|---|---|
+| OOP: Interface | `shared/types.ts` | กำหนด `CoreEngine` และ `InputSource` เป็น contract กลางระหว่างแต่ละส่วนของระบบ |
+| OOP: Class implements Interface | `core-engine/TetrisEngine.ts` | ใช้คลาส `TetrisEngine` เป็นตัวทำงานหลักของเกม |
+| FP: Pure Function | `core-engine/line-clear.ts` | ใช้ตรวจและลบแถวที่เต็ม โดยไม่แก้ข้อมูลเดิมโดยตรง |
+| FP: Higher-order Function | `shared/utils.ts` | ใช้ฟังก์ชันที่รับฟังก์ชันอื่นเข้ามาทำงานร่วมกัน |
+| FP: Dependency Injection | `core-engine/randomizer.ts` | ส่งฟังก์ชันสำหรับสุ่มเข้ามาจากภายนอก เพื่อให้เปลี่ยนและทดสอบได้ง่าย |
+### Testing
+
+โปรเจกต์มี Unit Test สำหรับตรวจสอบการทำงานหลักของเกม เช่น
+
+- `collision.test.ts` — ทดสอบ Collision Detection
+- `movement.test.ts` — ทดสอบ Movement และ Rotation
+- `line-clear.test.ts` — ทดสอบการเคลียร์แถว
+- `randomizer.test.ts` — ทดสอบระบบ 7-Bag Randomizer
+- `wall-kick.test.ts` — ทดสอบ Wall Kick
+- `spawn.test.ts` — ทดสอบการ Spawn Tetromino
+- `save-load.test.ts` — ทดสอบระบบ Save / Load
 
 ## How to Run
 
-1. Install bun
+1. Install Bun
 
--Windows (PowerShell)
+Windows (PowerShell)
 
+```bash
 powershell -c "irm bun.sh/install.ps1 | iex"
+```
 
--macOS / Linux
+macOS / Linux
 
+```bash
 curl -fsSL https://bun.sh/install | bash
+```
 
--check bun version 
+Check Bun version
 
+```bash
 bun --version
+```
 
-2. Install Packages 
+2. Install Packages
+
+```bash
 bun install
+```
 
 3. Run
+
+```bash
 bun run start
+```
 
 ## How to Test
 
+```bash
 bun test
-
+```
 ## Known Limitations
 
 - เกมสามารถเล่นได้ผ่าน Console / Terminal เท่านั้น
 - รองรับเฉพาะ Single Player
 - ยังไม่มี Online Leaderboard
-- การแสดงผลและ Keyboard Input อาจแตกต่างกันตาม Terminal ที่ใช้งาน
+- การแสดงผลและ Keyboard Input อาจจะแตกต่างกันตาม Terminal ที่ใช้งาน
+- การเซฟเกมเก็บแค่สถิติ high score ไม่ได้เก็บสถานะ กระดาน ผู้เล่นไม่สามารถเล่นต่อจากเกมที่ค้างไว้ได้ 
+- ยังไม่มี hold piece และ ghost piece แสดงตำแหน่งที่จะตก
+
 
 
