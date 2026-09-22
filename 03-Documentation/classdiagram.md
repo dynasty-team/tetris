@@ -1,6 +1,5 @@
 mermaid
-```
-classDiagram
+```classDiagram
     direction LR
 
     class CoreEngine {
