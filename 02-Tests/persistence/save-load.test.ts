@@ -180,7 +180,7 @@ describe('Persistence - saveGame & SaveManager', () => {
   });
 
   test('เชื่อมต่อเข้ากับ GameStateLoop: เรียก onSave เมื่อเกิด Game Over และบันทึกสถานะได้ถูกต้อง', () => {
-    let savedDataReceived: SaveData | null = null;
+    let savedDataReceived = null as SaveData | null;
     const engine = new TestEngine();
     engine.score = 900;
     engine.level = 4;
@@ -211,7 +211,7 @@ describe('Persistence - saveGame & SaveManager', () => {
   });
 
   test('เชื่อมต่อเข้ากับ GameStateLoop: เรียก onSave เมื่อผู้เล่นกด QUIT', () => {
-    let savedDataReceived: SaveData | null = null;
+    let savedDataReceived = null as SaveData | null;
     const engine = new TestEngine();
     engine.score = 450;
     engine.level = 2;
