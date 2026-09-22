@@ -129,7 +129,9 @@ tetris/
 │   └── sample.test.ts
 │
 ├── 03-Documentation/
-│       └── classdiagram.md
+│       ├── classdiagram.md
+|       └── decision-log.md
+|
 ├── 04-Demo/
 ├── index.ts
 ├── package.json
