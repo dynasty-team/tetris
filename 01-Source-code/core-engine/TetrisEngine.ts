@@ -46,6 +46,7 @@ export class TetrisEngine implements CoreEngine, MovementState {
   public lockResets: number;
   public lockTimer: ReturnType<typeof setTimeout> | null;
   public onLock?: (result: ActionResult) => void;
+  public lastClearedLines?: number[];
   private randomizer: SevenBagRandomizer;
 
   /**
@@ -65,8 +66,8 @@ export class TetrisEngine implements CoreEngine, MovementState {
     this.randomizer = randomizer ?? new SevenBagRandomizer();
     // ดึง piece เตรียมไว้ใน nextPiece ล่วงหน้าสำหรับ Next preview
     this.nextPiece = this.randomizer.next();
+    this.lastClearedLines = [];
   }
-  [key: string]: unknown;
 
   /**
    * ขยับ active piece ไปทางซ้าย 1 ช่อง

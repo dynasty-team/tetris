@@ -28,7 +28,6 @@ export interface MovementState {
   lockPiece?: () => ActionResult | void;
   spawnNextPiece?: () => ActionResult;
   lastClearedLines?: number[];
-  [key: string]: unknown;
 }
 
 /**
