@@ -91,7 +91,10 @@ export type GameAction =
   | 'HARD_DROP'
   | 'QUIT'
   | 'PAUSE';
-
+export interface InputSource {
+  start(onAction: (action: GameAction) => void): void;
+  stop(): void;
+}
 // ---------- Persistence ----------
 
 export interface SaveData {
