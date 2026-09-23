@@ -1,0 +1,12 @@
+# bunfig.toml — ตั้งค่า Bun test runner กลาง (Issue Q1)
+# อ้างอิง: 01-Source-code/shared/ เป็น type contract, ไฟล์นี้คุมพฤติกรรม `bun test`
+
+[test]
+# เปิด coverage report ทุกครั้งที่รัน `bun test` โดยไม่ต้องพิมพ์ --coverage เอง
+coverage = true
+
+# เกณฑ์ coverage ขั้นต่ำ — ตั้งไว้ต่ำก่อนเพราะเพิ่งเริ่มสัปดาห์ 1 ยังไม่มีโค้ดจริง
+# ค่อยปรับขึ้นตอนสัปดาห์ 4 (integration week) เมื่อโค้ดทุกทีมเข้าที่แล้ว
+[test.coverageThreshold]
+line = 0.5
+function = 0.5
