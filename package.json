@@ -14,9 +14,15 @@
     "test:io": "bun test 02-Tests/io-rendering"
   },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "@types/react": "^19.3.0"
   },
   "peerDependencies": {
     "typescript": "^5"
+  },
+  "dependencies": {
+    "@opentui/core": "^0.5.12",
+    "ink": "^7.1.1",
+    "react": "^19.3.0"
   }
 }
