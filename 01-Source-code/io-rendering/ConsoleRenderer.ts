@@ -1,12 +1,6 @@
 import type { ActivePiece, RenderSnapshot, Board, GameStatus, CellValue, TetrominoType } from "../shared/types"
-import { loadGame } from "../persistence";
+import { BOARD_WIDTH, BOARD_HEIGHT } from "../shared/constants";
 
-// =========================================================================
-// CONSTANTS — ค่าคงที่ที่ใช้ร่วมกันทั้งไฟล์
-// =========================================================================
-
-const BOARD_WIDTH = 10;   // ความกว้างของ board ตาม requirement (10 คอลัมน์)
-const BOARD_HEIGHT = 20;  // ความสูงของ board ตาม requirement (20 แถว)
 
 const EMPTY_CELL: CellValue = 0; // ค่าที่แปลว่า "ช่องว่าง"
 
@@ -95,14 +89,10 @@ function renderControls(): void {
 }
 
 
-// =========================================================================
-// MAIN FUNCTION — จุดเดียวที่ export ออกไปให้ index.ts เรียกใช้
-// =========================================================================
-
 // รับ snapshot สถานะเกม ณ ขณะนั้นมาวาดผลลัพธ์ทั้งหมดลง console ในครั้งเดียว
 export function render(snapshot: RenderSnapshot): void {
     // ดึงข้อมูลที่ต้องใช้ออกมาจาก snapshot
-    const { board, activePiece, nextPiece, score, level, status } = snapshot;
+    const { board, activePiece, nextPiece, score, level, highScore, status } = snapshot;
 
     // สร้าง board สำหรับแสดงผล = copy board จริง + วาง piece ปัจจุบันทับลงไป
     // (ไม่แก้ board จริงเพราะ piece ที่กำลังตกยังไม่ถือว่า "ล็อก" ติดถาวร)
@@ -117,8 +107,7 @@ export function render(snapshot: RenderSnapshot): void {
 
     // วาด board พร้อมเส้นขอบ
     renderBoardWithBorder(displayBoard);
-    const savedData = loadGame();
-    const highScore = savedData?.highScore ?? 0;
+   
     
     // แสดงข้อมูลเสริม: piece ถัดไป, คะแนน, เลเวล
     renderNextPiece(nextPiece);

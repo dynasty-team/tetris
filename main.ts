@@ -5,8 +5,6 @@ import { render } from './01-Source-code/io-rendering/ConsoleRenderer';
 import { saveGame, loadGame } from './01-Source-code/persistence';
 
 async function main(): Promise<void> {
-	const savedData = loadGame();
-	const highScore = savedData?.highScore ?? 0;
 	const engine = new TetrisEngine();
 	const input = new KeyboardInput();
 	const gameLoop = new GameStateLoop({
@@ -14,6 +12,7 @@ async function main(): Promise<void> {
 		input,
 		renderer: render,
 		onSave: saveGame,
+		onLoad: loadGame
 	});
 
 	gameLoop.start();
