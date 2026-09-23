@@ -215,6 +215,21 @@ export class GameStateLoop {
   }
 
   /**
+   * ดึงตัวอ้างอิงของ active piece ปัจจุบันจาก engine (รองรับทั้งสอง shape ที่ engine อาจ expose)
+   * ใช้เพื่อตรวจสอบว่ามีการ spawn piece ใหม่เกิดขึ้นหรือไม่ (เช่นหลังจาก lock)
+   */
+  private getActivePieceRef(): unknown {
+    const engineTarget = this.engine as unknown as {
+      getActivePiece?: () => unknown;
+      activePiece?: unknown;
+    };
+    if (typeof engineTarget.getActivePiece === 'function') {
+      return engineTarget.getActivePiece();
+    }
+    return engineTarget.activePiece;
+  }
+
+  /**
    * จัดการ Action ที่ได้รับจาก KeyboardInput หรือเรียกจากภายนอก
    */
   public handleAction(action: GameAction): void {
@@ -236,6 +251,9 @@ export class GameStateLoop {
     }
 
     this.lockHandledDuringAction = false;
+    // จำ reference ของ active piece ก่อน action เพื่อใช้เทียบว่า piece ถูก
+    // lock แล้ว spawn ใหม่ระหว่าง action นี้หรือไม่ (ไม่ว่าจะ lock จากทางไหน)
+    const pieceBeforeAction = this.getActivePieceRef();
     let result: ActionResult | undefined;
 
     switch (action) {
@@ -273,8 +291,13 @@ export class GameStateLoop {
       return;
     }
 
-    // หลัง hardDrop บล็อกล็อกทันทีและเกิดชิ้นใหม่ จึงตั้งเวลารอบถัดไปใหม่
-    if (action === 'HARD_DROP') {
+    // หาก piece ที่ active อยู่เปลี่ยนไปจากก่อน action นี้ แปลว่ามีการ lock
+    // และ spawn piece ใหม่เกิดขึ้นระหว่าง action (ไม่ว่าจะมาจาก HARD_DROP,
+    // การ lock ทันทีจากกฎ 15-move, หรือทางอื่นที่ไม่ได้ผ่าน onLock callback)
+    // จึงต้องตั้ง gravity tick timer ใหม่ให้ sync กับ piece ใหม่เสมอ แทนที่จะ
+    // ปล่อยให้ timer เดิมของ piece ก่อนหน้ายังคงเดินตามจังหวะเก่าอยู่
+    const pieceAfterAction = this.getActivePieceRef();
+    if (pieceAfterAction !== pieceBeforeAction) {
       this.scheduleTick();
     }
 
@@ -362,12 +385,25 @@ export class GameStateLoop {
       // โหลดเซฟเก่ามาดู high score สูงสุด
       const previousData = this.loadGame();
       const currentScore = this.engine.getScore();
-      const highScore = Math.max(previousData?.highScore ?? 0, currentScore);
+      const previousHighScore = previousData?.highScore ?? 0;
+      const isNewHighScore = currentScore > previousHighScore;
+      const highScore = isNewHighScore ? currentScore : previousHighScore;
+
+      // level/linesCleared ต้องเป็นของ "ตาเดียวกัน" กับ highScore ที่บันทึกไว้เสมอ
+      // ถ้าตานี้ไม่ได้ทำลายสถิติ ต้องคง level/linesCleared เดิมของตาที่ทำ highScore
+      // ไว้ ไม่ใช่เขียนทับด้วยค่าของตาปัจจุบันซึ่งอาจเป็นตาที่ทำคะแนนได้น้อยกว่า
+      const level = isNewHighScore
+        ? this.engine.getLevel()
+        : previousData?.level ?? this.engine.getLevel();
+      const linesCleared = isNewHighScore
+        ? this.engine.getLinesClearedTotal()
+        : previousData?.linesCleared ?? this.engine.getLinesClearedTotal();
+
       const saveData: SaveData = {
         version: 1,
         highScore, // <-- ใช้ค่าที่สูงสุดระหว่างรอบนี้กับรอบก่อนหน้า
-        level: this.engine.getLevel(),
-        linesCleared: this.engine.getLinesClearedTotal(),
+        level, // <-- ของตาที่ทำ highScore จริง ไม่ใช่ของตาปัจจุบันเสมอไป
+        linesCleared, // <-- เช่นเดียวกัน
         timestamp: new Date().toISOString(),
       };
 
