@@ -7,7 +7,6 @@
     "start": "bun run index.ts",
     "test": "bun test",
     "test:coverage": "bun test --coverage",
-    "test:coverage": "bun test --coverage",
     "test:core": "bun test 02-Tests/core-engine",
     "test:gameloop": "bun test 02-Tests/game-state-loop",
     "test:persistence": "bun test 02-Tests/persistence",

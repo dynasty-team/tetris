@@ -6,6 +6,7 @@ import { mockRenderSnapshot } from '../../01-Source-code/shared/mock-engine';
 
 class MockEngine implements CoreEngine {
   public score = 0;
+  public highScore = 0;
   public level = 1;
   public linesClearedTotal = 0;
   public gameOver = false;
@@ -51,6 +52,8 @@ class MockEngine implements CoreEngine {
   }
   public getScore(): number { return this.score; }
   public getLevel(): number { return this.level; }
+  public getHighScore(): number { return this.highScore; }
+  public setHighScore(score: number): void { this.highScore = score; }
   public isGameOver(): boolean { return this.gameOver; }
   public addScore(points: number): void { this.score += points; }
   public setLevel(lvl: number): void { this.level = lvl; }
