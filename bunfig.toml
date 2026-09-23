@@ -8,5 +8,5 @@ coverage = true
 # เกณฑ์ coverage ขั้นต่ำ — ตั้งไว้ต่ำก่อนเพราะเพิ่งเริ่มสัปดาห์ 1 ยังไม่มีโค้ดจริง
 # ค่อยปรับขึ้นตอนสัปดาห์ 4 (integration week) เมื่อโค้ดทุกทีมเข้าที่แล้ว
 [test.coverageThreshold]
-line = 0.5
-function = 0.5
+line = 0.85
+function = 0.85

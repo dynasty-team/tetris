@@ -27,6 +27,12 @@ export function saveGame(data: SaveData, filePath: string = DEFAULT_SAVE_FILE): 
       return;
     }
 
+    // ตรวจสอบว่า filePath เป็น directory หรือไม่
+    if (filePath.endsWith('/') || filePath.endsWith('\\') || (fs.existsSync(filePath) && fs.statSync(filePath).isDirectory())) {
+      console.error(`Failed to save game: "${filePath}" is a directory.`);
+      return;
+    }
+
     // สร้าง directory หากยังไม่มี
     const dir = path.dirname(filePath);
     if (dir && dir !== '.' && !fs.existsSync(dir)) {
@@ -37,7 +43,8 @@ export function saveGame(data: SaveData, filePath: string = DEFAULT_SAVE_FILE): 
     fs.writeFileSync(filePath, jsonString, 'utf-8');
   } catch (error) {
     // จัดการข้อผิดพลาดแบบ graceful (เช่น EACCES, ENOSPC, EPERM) โดยไม่ throw ออกไปขัดจังหวะเกม
-    console.error(`Failed to save game to "${filePath}":`, error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error(`Failed to save game to "${filePath}": ${errorMessage}`);
   }
 }
 
@@ -55,6 +62,11 @@ export function loadGame(filePath: string = DEFAULT_SAVE_FILE): SaveData | null 
       return null;
     }
 
+    if (fs.statSync(filePath).isDirectory()) {
+      console.error(`Failed to load game: "${filePath}" is a directory.`);
+      return null;
+    }
+
     const content = fs.readFileSync(filePath, 'utf-8');
     const parsed: unknown = JSON.parse(content);
 
@@ -65,7 +77,8 @@ export function loadGame(filePath: string = DEFAULT_SAVE_FILE): SaveData | null 
     console.warn(`Failed to load game: data in "${filePath}" does not match SaveData schema.`);
     return null;
   } catch (error) {
-    console.error(`Failed to load game from "${filePath}":`, error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error(`Failed to load game from "${filePath}": ${errorMessage}`);
     return null;
   }
 }
