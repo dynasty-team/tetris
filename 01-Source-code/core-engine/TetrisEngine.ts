@@ -247,6 +247,10 @@ export class TetrisEngine implements CoreEngine, MovementState {
     return this.level;
   }
 
+  public setHighScore(highScore: number): void {
+    if (!Number.isFinite(highScore) || highScore < 0) return;
+    this.highScore = Math.floor(highScore);
+  }
   /**
     * เพิ่มคะแนนสะสม (เรียกโดย game-state-loop หลังคำนวณคะแนนจาก linesCleared)
     * กัน input ผิดปกติ (ติดลบ/NaN) ไม่ให้ทำลาย state
