@@ -7,7 +7,6 @@
     "start": "bun run index.ts",
     "test": "bun test",
     "test:coverage": "bun test --coverage",
-    "test:coverage": "bun test --coverage",
     "test:core": "bun test 02-Tests/core-engine",
     "test:gameloop": "bun test 02-Tests/game-state-loop",
     "test:persistence": "bun test 02-Tests/persistence",
@@ -15,9 +14,17 @@
     "test:io": "bun test 02-Tests/io-rendering"
   },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "@types/node": "^22.0.0",
+    "@types/react": "^18.3.3",
+    "typescript": "^5.5.0"
   },
   "peerDependencies": {
     "typescript": "^5"
+  },
+  "dependencies": {
+    "ink": "^5.1.0",
+    "react": "^18.3.1",
+    "ink-select-input": "^6.2.0"
   }
 }
