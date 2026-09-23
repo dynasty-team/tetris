@@ -10,9 +10,13 @@ import {
   softDrop,
   rotate,
   hardDrop,
+  tick,
   isPieceOnGround,
   lockPieceToBoard,
   performLock,
+  handleLockDelayOnMove,
+  startLockTimer,
+  restartLockTimer,
   type MovementState,
 } from '../../01-Source-code/core-engine/movement';
 import {
@@ -661,6 +665,211 @@ describe('Movement & Lock Delay System (C4)', () => {
       state.invalidProp = 'test';
 
       expect(engine.getScore()).toBe(0);
+    });
+  });
+
+  describe('9. startLockTimer() / restartLockTimer() - onTimeout callback', () => {
+    test('startLockTimer() เรียก onTimeout callback หลัง lock ครบ LOCK_DELAY_MS', async () => {
+      const board = createEmptyBoard();
+      const piece = createTestPiece('T', 4, 18); // ชิดพื้นพอดี
+      const state: MovementState = { board, activePiece: piece, isLocking: false, lockResets: 0 };
+
+      let onTimeoutCalled = false;
+      startLockTimer(state, () => {
+        onTimeoutCalled = true;
+      });
+
+      expect(state.isLocking).toBe(true);
+      expect(onTimeoutCalled).toBe(false);
+
+      await new Promise((resolve) => setTimeout(resolve, LOCK_DELAY_MS + 50));
+
+      expect(onTimeoutCalled).toBe(true);
+      expect(state.isLocking).toBe(false);
+      expect(state.activePiece).toBeNull();
+    });
+
+    test('restartLockTimer() เรียก onTimeout callback หลัง lock ครบ LOCK_DELAY_MS อีกครั้ง', async () => {
+      const board = createEmptyBoard();
+      const piece = createTestPiece('T', 4, 18); // ชิดพื้นพอดี
+      const state: MovementState = { board, activePiece: piece, isLocking: true, lockResets: 3 };
+
+      let onTimeoutCalled = false;
+      restartLockTimer(state, () => {
+        onTimeoutCalled = true;
+      });
+
+      expect(state.isLocking).toBe(true);
+      expect(onTimeoutCalled).toBe(false);
+
+      await new Promise((resolve) => setTimeout(resolve, LOCK_DELAY_MS + 50));
+
+      expect(onTimeoutCalled).toBe(true);
+      expect(state.isLocking).toBe(false);
+      expect(state.activePiece).toBeNull();
+    });
+  });
+
+  describe('10. performLock() - Edge Case ไม่มี activePiece', () => {
+    test('performLock(state) คืนค่าทันทีโดยไม่ทำอะไรเมื่อ activePiece เป็น null', () => {
+      const board = createEmptyBoard();
+      const state: MovementState = { board, activePiece: null, isLocking: false, gameOver: false };
+
+      const result = performLock(state);
+
+      expect(result.success).toBe(true);
+      expect(result.linesCleared).toEqual([]);
+      expect(result.gameOver).toBe(false);
+      // ไม่ควรมีอะไรเปลี่ยนแปลงบน board เพราะไม่มี piece ให้ล็อก
+      expect(state.board).toEqual(board);
+    });
+  });
+
+  describe('11. handleLockDelayOnMove() - เริ่ม Lock Delay ครั้งแรกจากการขยับ/หมุน', () => {
+    test('เมื่อ piece แตะพื้นและยังไม่เคยอยู่ใน lock delay -> เริ่ม lock delay ครั้งแรก (startLockTimer)', () => {
+      const board = createEmptyBoard();
+      const piece = createTestPiece('T', 4, 18); // ชิดพื้นพอดี
+      const state: MovementState = { board, activePiece: piece, isLocking: false, lockResets: 0 };
+
+      const result = handleLockDelayOnMove(state);
+
+      // ยังไม่ล็อกทันที เพียงแค่เริ่มนับเวลา lock delay
+      expect(result).toBeNull();
+      expect(state.isLocking).toBe(true);
+      expect(state.lockTimer).not.toBeNull();
+      expect(state.lockResets).toBe(0);
+    });
+  });
+
+  describe('12. softDrop(state) - Plain State Edge Cases สำหรับ Lock Delay', () => {
+    test('softDrop(state) ชนพื้นทันทีขณะยังไม่ได้อยู่ใน lock delay -> เริ่ม lock delay ใหม่ (startLockTimer)', () => {
+      const board = createEmptyBoard();
+      const piece = createTestPiece('T', 4, 18); // ชิดพื้นพอดี ขยับลงอีกไม่ได้แล้ว
+      const state: MovementState = { board, activePiece: piece, isLocking: false, lockResets: 0 };
+
+      const result = softDrop(state);
+
+      expect(result.success).toBe(false);
+      expect(state.isLocking).toBe(true);
+      expect(state.lockTimer).not.toBeNull();
+    });
+
+    test('softDrop(state) เลื่อนลงสำเร็จแล้วแตะพื้นเป็นครั้งแรก (ยังไม่เคย lock) -> เริ่ม lock delay (startLockTimer)', () => {
+      const board = createEmptyBoard();
+      const piece = createTestPiece('T', 4, 17); // ยังไม่แตะพื้น (เลื่อนลงอีก 1 ช่องจะแตะพอดี)
+      const state: MovementState = { board, activePiece: piece, isLocking: false, lockResets: 0 };
+
+      expect(isPieceOnGround(state.board, state.activePiece!)).toBe(false);
+
+      const result = softDrop(state);
+
+      expect(result.success).toBe(true);
+      expect(state.activePiece?.position.y).toBe(18);
+      expect(isPieceOnGround(state.board, state.activePiece!)).toBe(true);
+      expect(state.isLocking).toBe(true);
+      expect(state.lockTimer).not.toBeNull();
+    });
+
+    test('softDrop(state) เลื่อนลงสำเร็จแล้วแตะพื้นขณะที่ isLocking เป็น true อยู่ก่อนแล้ว และ resets ยังไม่ครบ MAX -> รีเซ็ตเวลา lock delay ใหม่ (restartLockTimer)', () => {
+      const board = createEmptyBoard();
+      const piece = createTestPiece('T', 4, 17); // ยังไม่แตะพื้นจริง
+      // จำลองกรณี isLocking ถูกตั้งเป็น true มาก่อนแล้ว (เช่นสืบเนื่องจาก action ก่อนหน้า)
+      const state: MovementState = { board, activePiece: piece, isLocking: true, lockResets: 2 };
+
+      const result = softDrop(state);
+
+      expect(result.success).toBe(true);
+      expect(state.activePiece?.position.y).toBe(18);
+      expect(isPieceOnGround(state.board, state.activePiece!)).toBe(true);
+      // นับ reset เพิ่มขึ้นแต่ยังไม่ถึง MAX_LOCK_RESETS -> ต้อง restartLockTimer ไม่ใช่ performLock
+      expect(state.lockResets).toBe(3);
+      expect(state.isLocking).toBe(true);
+      expect(state.lockTimer).not.toBeNull();
+      expect(state.activePiece).not.toBeNull();
+    });
+  });
+
+  describe('13. hardDrop(state) - Edge Case ไม่มี activePiece / gameOver', () => {
+    test('hardDrop(state) คืนค่าทันทีโดยไม่ทำอะไรเมื่อไม่มี activePiece', () => {
+      const board = createEmptyBoard();
+      const state: MovementState = { board, activePiece: null, isLocking: false, gameOver: false };
+
+      const result = hardDrop(state);
+
+      expect(result.success).toBe(false);
+      expect(result.linesCleared).toEqual([]);
+      expect(result.gameOver).toBe(false);
+    });
+
+    test('hardDrop(state) คืนค่าทันทีโดยไม่ทำอะไรเมื่อ gameOver เป็น true', () => {
+      const board = createEmptyBoard();
+      const piece = createTestPiece('T', 4, 5);
+      const state: MovementState = { board, activePiece: piece, isLocking: false, gameOver: true };
+
+      const result = hardDrop(state);
+
+      expect(result.success).toBe(false);
+      expect(result.linesCleared).toEqual([]);
+      expect(result.gameOver).toBe(true);
+      // piece ต้องไม่ถูกขยับหรือล็อกใดๆ ทั้งสิ้น
+      expect(state.activePiece).toBe(piece);
+    });
+  });
+
+  describe('14. tick() - Gravity Tick Dispatcher', () => {
+    test('tick(state) คืนค่า gameOver ทันทีเมื่อ state.gameOver เป็น true โดยไม่แตะ activePiece', () => {
+      const board = createEmptyBoard();
+      const state: MovementState = { board, activePiece: null, isLocking: false, gameOver: true };
+
+      const result = tick(state);
+
+      expect(result.success).toBe(false);
+      expect(result.linesCleared).toEqual([]);
+      expect(result.gameOver).toBe(true);
+    });
+
+    test('tick(state) เรียก state.spawnNextPiece() เมื่อยังไม่มี activePiece', () => {
+      const board = createEmptyBoard();
+      let spawnCalled = false;
+      const state: MovementState = {
+        board,
+        activePiece: null,
+        isLocking: false,
+        gameOver: false,
+        spawnNextPiece: () => {
+          spawnCalled = true;
+          return { success: true, linesCleared: [], gameOver: false };
+        },
+      };
+
+      const result = tick(state);
+
+      expect(spawnCalled).toBe(true);
+      expect(result.success).toBe(true);
+      expect(result.gameOver).toBe(false);
+    });
+
+    test('tick(state) คืนค่า default (gameOver: true) เมื่อไม่มี activePiece และไม่มี spawnNextPiece ให้เรียก', () => {
+      const board = createEmptyBoard();
+      const state: MovementState = { board, activePiece: null, isLocking: false, gameOver: false };
+
+      const result = tick(state);
+
+      expect(result.success).toBe(false);
+      expect(result.linesCleared).toEqual([]);
+      expect(result.gameOver).toBe(true);
+    });
+
+    test('tick(state) เรียก softDrop() เพื่อเลื่อน piece ลง 1 ช่องเมื่อมี activePiece อยู่แล้ว', () => {
+      const board = createEmptyBoard();
+      const piece = createTestPiece('T', 4, 5);
+      const state: MovementState = { board, activePiece: piece, isLocking: false, gameOver: false };
+
+      const result = tick(state);
+
+      expect(result.success).toBe(true);
+      expect(state.activePiece?.position.y).toBe(6);
+      expect(state.activePiece?.position.x).toBe(4);
     });
   });
 });
