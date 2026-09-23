@@ -247,8 +247,15 @@ export class TetrisEngine implements CoreEngine, MovementState {
     return this.level;
   }
 
+  public getHighScore(): number {
+    return this.highScore;
+  }
+
+
   public setHighScore(highScore: number): void {
-    if (!Number.isFinite(highScore) || highScore < 0) return;
+    if (!Number.isFinite(highScore) || highScore < 0) {
+      return;
+    }
     this.highScore = Math.floor(highScore);
   }
   /**
