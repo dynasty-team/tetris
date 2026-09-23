@@ -130,6 +130,8 @@ export interface CoreEngine {
   getRenderSnapshot(): RenderSnapshot;
   getScore(): number;
   getLevel(): number;
+  getHighScore(): number;
+  setHighScore(highScore: number): void;
   isGameOver(): boolean;
   // เพิ่มใหม่ — ให้ game-state-loop อัปเดต score/level ได้โดยไม่ต้อง mutate field ตรงๆ
   addScore(points: number): void;

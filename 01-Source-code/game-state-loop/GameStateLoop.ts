@@ -319,12 +319,25 @@ export class GameStateLoop {
    */
   private processActionResult(result: ActionResult): void {
     if (result.linesCleared && result.linesCleared.length > 0) {
-      const points = calculateScore(result.linesCleared.length, this.engine.getLevel());
-      this.engine.addScore(points);
+      const points = calculateScore(
+        result.linesCleared.length,
+        this.engine.getLevel()
+      );
 
-      const newLevel = calculateLevel(this.engine.getLinesClearedTotal());
+      this.engine.addScore(points);
+      const currentScore = this.engine.getScore();
+      const currentHighScore = this.engine.getHighScore();
+
+    if (currentScore > currentHighScore) {
+      this.engine.setHighScore(currentScore);
+      }
+
+      const newLevel = calculateLevel(
+        this.engine.getLinesClearedTotal()
+      );
+
       this.engine.setLevel(newLevel);
-    }
+   }
   }
 
   private handleLockedResult(result: ActionResult): void {
