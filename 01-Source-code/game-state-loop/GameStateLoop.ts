@@ -5,8 +5,9 @@ import type {
   SaveData,
   ActionResult,
   GameStatus,
+  InputSource,
 } from '../shared/types';
-import type { KeyboardInput } from '../io-rendering/KeyboardInput';
+
 import { saveGame, loadGame } from '../persistence';
 import { calculateScore } from './score';
 import { calculateLevel, getSpeedForLevel } from './level';
@@ -22,7 +23,7 @@ export interface GameStateLoopOptions {
   /** ฟังก์ชันสำหรับวาดการแสดงผล (เช่น ConsoleRenderer.render) */
   renderer?: (snapshot: RenderSnapshot) => void;
   /** โมดูลรับอินพุตจากคีย์บอร์ด */
-  input?: KeyboardInput;
+  input?: InputSource;
   /** Callback สำหรับบันทึกคะแนน (Persistence) — หากไม่ระบุจะใช้ saveGame เป็นค่าเริ่มต้น */
   onSave?: (data: SaveData) => Promise<void> | void;
   /** Callback สำหรับโหลดข้อมูลเกม (หากไม่ระบุจะใช้ loadGame เป็นค่าเริ่มต้น) */
@@ -39,7 +40,7 @@ export interface GameStateLoopOptions {
 export class GameStateLoop {
   private readonly engine: CoreEngine;
   private readonly renderer?: (snapshot: RenderSnapshot) => void;
-  private readonly input?: KeyboardInput;
+  private readonly input?: InputSource;
   private readonly onSave?: (data: SaveData) => Promise<void> | void;
   private readonly onLoad?: () => SaveData | null;
   private readonly saveFilePath?: string;
@@ -77,6 +78,12 @@ export class GameStateLoop {
     this.saveTriggered = false;
     this.wasLockingBeforePause = false;
     this.lockHandledDuringAction = false;
+
+    // โหลด high score จาก persistence layer และตั้งค่าให้ engine
+    const highScoreEngine = this.engine as CoreEngine & {
+      setHighScore?: (highScore: number) => void;
+    };
+    highScoreEngine.setHighScore?.(this.loadGame()?.highScore ?? 0);
 
     // หากกระดานยังไม่มี active piece ให้ spawn ชิ้นแรกเตรียมไว้
     const engineTarget = this.engine as unknown as {
