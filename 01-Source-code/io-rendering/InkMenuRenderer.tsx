@@ -4,13 +4,15 @@
 // โครงสร้างเดิมยังคงอยู่: MenuState เก็บ state, main.ts คุม flow,
 // ส่วนไฟล์นี้รับผิดชอบเฉพาะการวาด UI และ keyboard interaction ของหน้าเมนู
 
-import React, { useState } from 'react';
-import { Box, Text, render, useInput } from 'ink';
+import React, { useEffect, useState } from 'react';
+import { Box, Text, render, useInput, useStdout } from 'ink';
 import type { MenuOptionId } from '../menu/MenuState';
 import { MenuState } from '../menu/MenuState';
 import type { SaveData } from '../shared/types';
 
 const PANEL_WIDTH = 58;
+const MIN_MENU_WIDTH = 58;
+const MIN_MENU_HEIGHT = 20;
 
 const TITLE_COLORS = [
   '#ff4d67',
@@ -97,6 +99,37 @@ function MenuFooter(): React.ReactElement {
   );
 }
 
+function SmallScreenNotice({
+  width,
+  height,
+}: {
+  width: number;
+  height: number;
+}): React.ReactElement {
+  return (
+    <Box flexDirection="column" alignItems="center" justifyContent="center" paddingY={2}>
+      <Box
+        width={Math.min(Math.max(width - 2, 30), 58)}
+        borderStyle="double"
+        borderColor="#ffd84d"
+        paddingX={2}
+        paddingY={1}
+        flexDirection="column"
+        alignItems="center"
+      >
+        <Text color="#ffd84d" bold>⚠ SCREEN TOO SMALL</Text>
+        <Text color="#c0c7d6">Please resize the terminal window.</Text>
+        <Text color="#55e27a" bold>Use a larger screen for Tetris.</Text>
+        <Box marginTop={1} flexDirection="column" alignItems="center">
+          <Text color="#7f8caa">Recommended: at least {MIN_MENU_WIDTH} columns</Text>
+          <Text color="#7f8caa">and {MIN_MENU_HEIGHT} rows</Text>
+          <Text color="#626d83">Current: {width} × {height}</Text>
+        </Box>
+      </Box>
+    </Box>
+  );
+}
+
 export function MainMenuApp({
   state,
   onSelect,
@@ -104,7 +137,17 @@ export function MainMenuApp({
   state: MenuState;
   onSelect: (id: MenuOptionId) => void;
 }): React.ReactElement {
+  const { stdout } = useStdout();
   const [selectedIndex, setSelectedIndex] = useState(state.getSelectedIndex());
+  const [, forceResize] = useState(0);
+
+  useEffect(() => {
+    const onResize = () => forceResize((value) => value + 1);
+    stdout.on('resize', onResize);
+    return () => {
+      stdout.off('resize', onResize);
+    };
+  }, [stdout]);
 
   useInput((input, key) => {
     if (key.upArrow || input.toLowerCase() === 'w') {
@@ -131,6 +174,12 @@ export function MainMenuApp({
 
   const options = state.options;
   const selectedId = options[selectedIndex]?.id;
+  const columns = stdout.columns || 80;
+  const rows = stdout.rows || 30;
+
+  if (columns < MIN_MENU_WIDTH || rows < MIN_MENU_HEIGHT) {
+    return <SmallScreenNotice width={columns} height={rows} />;
+  }
 
   return (
     <Box flexDirection="column" alignItems="center" paddingY={1}>
@@ -213,6 +262,20 @@ export function HighScoreApp({
   data: SaveData | null;
   onBack: () => void;
 }): React.ReactElement {
+  const { stdout } = useStdout();
+  const [, forceResize] = useState(0);
+
+  useEffect(() => {
+    const onResize = () => forceResize((value) => value + 1);
+    stdout.on('resize', onResize);
+    return () => {
+      stdout.off('resize', onResize);
+    };
+  }, [stdout]);
+
+  const columns = stdout.columns || 80;
+  const rows = stdout.rows || 30;
+
   useInput((input, key) => {
     const normalized = input.toLowerCase();
 
@@ -221,6 +284,10 @@ export function HighScoreApp({
       onBack();
     }
   });
+
+  if (columns < MIN_MENU_WIDTH || rows < MIN_MENU_HEIGHT) {
+    return <SmallScreenNotice width={columns} height={rows} />;
+  }
 
   return (
     <Box flexDirection="column" alignItems="center" paddingY={2}>
