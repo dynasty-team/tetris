@@ -65,6 +65,7 @@ export function isPieceOnGround(board: Board, piece: ActivePiece): boolean {
  */
 export function lockPieceToBoard(board: Board, piece: ActivePiece): Board {
   const { shape, position, type } = piece;
+  const nextBoard = board.map((row) => [...row]);
 
   for (let r = 0; r < shape.length; r++) {
     const shapeRow = shape[r];
@@ -77,8 +78,8 @@ export function lockPieceToBoard(board: Board, piece: ActivePiece): Board {
       const boardY = position.y + r;
       const boardX = position.x + c;
 
-      if (boardY >= 0 && boardY < board.length) {
-        const targetRow = board[boardY];
+      if (boardY >= 0 && boardY < nextBoard.length) {
+        const targetRow = nextBoard[boardY];
         if (targetRow && boardX >= 0 && boardX < targetRow.length) {
           targetRow[boardX] = type;
         }
@@ -86,7 +87,7 @@ export function lockPieceToBoard(board: Board, piece: ActivePiece): Board {
     }
   }
 
-  return board;
+  return nextBoard;
 }
 
 /**
