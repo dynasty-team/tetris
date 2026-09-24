@@ -4,7 +4,7 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "start": "bun run index.ts",
+    "start": "bun run main.ts",
     "test": "bun test",
     "test:coverage": "bun test --coverage",
     "test:core": "bun test 02-Tests/core-engine",
@@ -21,7 +21,6 @@
     "typescript": "^5"
   },
   "dependencies": {
-    "@opentui/core": "^0.5.12",
     "ink": "^7.1.1",
     "react": "^19.3.0"
   }
