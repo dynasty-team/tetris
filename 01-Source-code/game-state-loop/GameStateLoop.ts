@@ -30,6 +30,8 @@ export interface GameStateLoopOptions {
   onLoad?: () => SaveData | null;
   /** ตำแหน่งไฟล์สำหรับบันทึกข้อมูล (กรณีใช้ default onSave) */
   saveFilePath?: string;
+  /** เรียกหนึ่งครั้งเมื่อเกมจบจาก Quit หรือ Game Over */
+  onEnd?: (reason: 'quit' | 'gameover') => void;
 }
 
 /**
@@ -44,6 +46,7 @@ export class GameStateLoop {
   private readonly onSave?: (data: SaveData) => Promise<void> | void;
   private readonly onLoad?: () => SaveData | null;
   private readonly saveFilePath?: string;
+  private readonly onEnd?: (reason: 'quit' | 'gameover') => void;
 
   private running: boolean = false;
   private paused: boolean = false;
@@ -58,6 +61,7 @@ export class GameStateLoop {
     this.renderer = options.renderer;
     this.input = options.input;
     this.saveFilePath = options.saveFilePath;
+    this.onEnd = options.onEnd;
     this.onSave = options.onSave ?? ((data: SaveData) => saveGame(data, this.saveFilePath));
     this.onLoad = options.onLoad ?? (() => loadGame(this.saveFilePath));
     const lockAwareEngine = this.engine as CoreEngine & {
@@ -138,6 +142,7 @@ export class GameStateLoop {
     lockAwareEngine.onLock = undefined;
 
     this.triggerSave();
+    this.notifyEnd('quit');
   }
 
   /**
@@ -212,6 +217,10 @@ export class GameStateLoop {
    */
   public isPaused(): boolean {
     return this.paused;
+  }
+
+  private notifyEnd(reason: 'quit' | 'gameover'): void {
+    this.onEnd?.(reason);
   }
 
   /**
@@ -370,6 +379,7 @@ export class GameStateLoop {
 
     this.render('gameover');
     this.triggerSave();
+    this.notifyEnd('gameover');
   }
 
   /**

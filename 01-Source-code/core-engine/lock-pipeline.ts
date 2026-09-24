@@ -1,10 +1,6 @@
 import { checkAndClearLines } from './line-clear';
 import { lockPieceToBoard, type MovementState } from './movement';
 import { pipe } from '../shared/utils';
-import type { ActivePiece } from '../shared/types';
-
-/** ชิ้นส่วนที่ boundary เตรียมไว้ให้ pure lock pipeline */
-export type NextActivePiece = ActivePiece | null;
 
 /**
  * ขั้นตอนที่ 1: ล็อก Active Piece ลงบน Board
@@ -13,15 +9,20 @@ export type NextActivePiece = ActivePiece | null;
  */
 export function lockActivePieceToBoardStep<T extends MovementState = MovementState>(state: T): T {
   if (!state.activePiece) {
-    return { ...state };
+    return {
+      ...state,
+      spawnNextPiece: state.spawnNextPiece,
+    };
   }
 
-  const newBoard = lockPieceToBoard(state.board, state.activePiece);
+  const clonedBoard = state.board.map((row) => [...row]);
+  const newBoard = lockPieceToBoard(clonedBoard, state.activePiece);
 
   return {
     ...state,
     board: newBoard,
     activePiece: null,
+    spawnNextPiece: state.spawnNextPiece,
   };
 }
 
@@ -41,32 +42,23 @@ export function clearFullLinesStep<T extends MovementState = MovementState>(stat
 }
 
 /**
- * ขั้นตอนที่ 3: ใส่ชิ้นส่วนถัดไปที่ถูกสร้างจากภายนอกแล้ว
- * ฟังก์ชันนี้ไม่สุ่มและไม่เรียก callback จึงเป็น pure function
+ * ขั้นตอนที่ 3: สุ่มเกิดชิ้นส่วนถัดไป (Spawn Next Piece)
+ * จุดเชื่อมโยงกับ Side Effect ภายนอกของ Engine (Impure Boundary)
+ * โดยเรียก state.spawnNextPiece?.() เพื่อเปลี่ยนผ่าน activePiece แล้วคืน state ใหม่
  */
-export function spawnNextPieceStep<T extends MovementState = MovementState>(
-  state: T,
-  nextActivePiece: NextActivePiece = null,
-): T {
+export function spawnNextPieceStep<T extends MovementState = MovementState>(state: T): T {
+  state.spawnNextPiece?.();
   return {
     ...state,
-    activePiece: nextActivePiece,
   };
 }
 
 /**
  * ประกอบ 3 ขั้นตอนเข้าด้วยกันผ่าน Higher-order Function: pipe()
  */
-export function applyLock<T extends MovementState = MovementState>(
-  state: T,
-  nextActivePiece: NextActivePiece = null,
-): T {
-  const applyCoreSteps = pipe(
-    lockActivePieceToBoardStep<T>,
-    clearFullLinesStep<T>,
-    (nextState: T) => spawnNextPieceStep(nextState, nextActivePiece),
-  );
-
-  return applyCoreSteps(state);
-}
+export const applyLock = pipe(
+  lockActivePieceToBoardStep,
+  clearFullLinesStep,
+  spawnNextPieceStep,
+);
 
