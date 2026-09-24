@@ -612,14 +612,18 @@ describe('Movement & Lock Delay System (C4)', () => {
       const board = createEmptyBoard();
       const piece = createTestPiece('O', 2, 18);
 
-      lockPieceToBoard(board, piece);
+      const lockedBoard = lockPieceToBoard(board, piece);
 
       // O piece: ขนาด 2x2 อยู่ที่ row 0-1, col 1-2
       // position (x=2, y=18) -> (x=3, y=18), (x=4, y=18), (x=3, y=19), (x=4, y=19)
-      expect(board[18]![3]).toBe('O');
-      expect(board[18]![4]).toBe('O');
-      expect(board[19]![3]).toBe('O');
-      expect(board[19]![4]).toBe('O');
+      expect(lockedBoard[18]![3]).toBe('O');
+      expect(lockedBoard[18]![4]).toBe('O');
+      expect(lockedBoard[19]![3]).toBe('O');
+      expect(lockedBoard[19]![4]).toBe('O');
+      expect(board[18]![3]).toBe(0);
+      expect(board[18]![4]).toBe(0);
+      expect(board[19]![3]).toBe(0);
+      expect(board[19]![4]).toBe(0);
     });
   });
 
