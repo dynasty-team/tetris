@@ -93,7 +93,7 @@ function MenuOptionRow({
 function MenuFooter(): React.ReactElement {
   return (
     <Box flexDirection="column" alignItems="center" marginTop={1}>
-      <Text color="#7f8caa">↑ / ↓  Pgup / Pgdwn   •   ENTER  confirm</Text>
+      <Text color="#7f8caa">↑ / ↓  Pgup / Pgdwn   •   ENTER / SPACE confirm</Text>
       <Text color="#626d83" dimColor>W / S also   •   Q  quit</Text>
     </Box>
   );
@@ -197,7 +197,7 @@ export function MainMenuApp({
 
         <Box marginTop={2} marginBottom={1} width={PANEL_WIDTH - 6}>
           <Text color="#556078">
-            {'─'.repeat(PANEL_WIDTH - 8)}
+            {'─'.repeat(PANEL_WIDTH - 6)}
           </Text>
         </Box>
 

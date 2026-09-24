@@ -188,6 +188,7 @@ describe('Persistence - saveGame & SaveManager', () => {
 
     const loop = new GameStateLoop({
       engine,
+      onLoad: () => null,
       onSave: (data) => {
         savedDataReceived = data;
         saveGame(data, TEST_SAVE_FILE);
@@ -219,6 +220,7 @@ describe('Persistence - saveGame & SaveManager', () => {
 
     const loop = new GameStateLoop({
       engine,
+      onLoad: () => null,
       onSave: (data) => {
         savedDataReceived = data;
         saveGame(data, TEST_SAVE_FILE);
@@ -264,6 +266,7 @@ describe('Persistence - saveGame & SaveManager', () => {
 
     const loop = new GameStateLoop({
       engine,
+      onLoad: () => null,
       onSave: async (data) => {
         await Promise.resolve();
         asyncSaved = true;

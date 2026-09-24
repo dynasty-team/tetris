@@ -11,9 +11,9 @@ import type { ActivePiece, Board, GameAction, RenderSnapshot, TetrominoType } fr
 import { BOARD_HEIGHT, BOARD_WIDTH } from '../shared/constants';
 
 const UI_WIDTH = 82;
-const COMPACT_WIDTH = 50;
+const COMPACT_WIDTH = 70;
 const MIN_GAME_WIDTH = 50;
-const MIN_GAME_HEIGHT = 27;
+const MIN_GAME_HEIGHT = 22;
 const CELL = '██';
 
 const PIECE_COLORS: Record<TetrominoType, string> = {
@@ -377,17 +377,15 @@ function Footer({ status }: { status: RenderSnapshot['status'] }): React.ReactEl
       borderStyle="single"
       borderColor="#30384a"
       paddingX={1}
-      justifyContent="space-between"
+      justifyContent="center"
     >
       {status === 'gameover' ? (
         <>
-          <Text color="#ff4d67" bold>ENTER / SPACE  BACK TO MENU</Text>
-          <Text color="#7f8caa">Q / ESC  EXIT</Text>
+          <Text color="#ff4d67" bold>ENTER / SPACE  BACK TO MENU | Q / ESC  EXIT</Text>
         </>
       ) : (
         <>
           <Text color="#55e27a">● SYSTEM NOMINAL</Text>
-          <Text color="#626d83">Ink + React | Bun</Text>
         </>
       )}
     </Box>
@@ -401,10 +399,19 @@ function ResponsiveNotice({
   width: number;
   height: number;
 }): React.ReactElement {
+  const noticeWidth = Math.max(width, 1);
+  const panelWidth = Math.max(Math.min(width - 2, 58), 1);
+
   return (
-    <Box flexDirection="column" alignItems="center" justifyContent="center" paddingY={2}>
+    <Box
+      width={noticeWidth}
+      height={Math.max(height, 1)}
+      flexDirection="column"
+      alignItems="center"
+      justifyContent="center"
+    >
       <Box
-        width={Math.min(Math.max(width - 2, 30), 58)}
+        width={panelWidth}
         borderStyle="double"
         borderColor="#ffd84d"
         paddingX={2}
@@ -493,8 +500,8 @@ function GameApp({
   const columns = stdout.columns || 100;
   const rows = stdout.rows || 30;
   const tooSmall = columns < MIN_GAME_WIDTH || rows < MIN_GAME_HEIGHT;
-  const compact = columns < UI_WIDTH;
-  const contentWidth = compact ? COMPACT_WIDTH : UI_WIDTH;
+  const compact = columns < UI_WIDTH || rows < MIN_GAME_HEIGHT + 5;
+  const contentWidth = compact ? Math.min(COMPACT_WIDTH, columns) : UI_WIDTH;
 
   if (tooSmall) {
     return <ResponsiveNotice width={columns} height={rows} />;
@@ -502,46 +509,39 @@ function GameApp({
 
   return (
     <Box flexDirection="column" alignItems="center">
-      <Box width={contentWidth}>
-        <GameHeader snapshot={snapshot} />
-      </Box>
+      {!compact ? (
+        <Box width={contentWidth}>
+          <GameHeader snapshot={snapshot} />
+        </Box>
+      ) : null}
 
       <Box
         width={contentWidth}
         marginTop={1}
-        flexDirection={compact ? 'column' : 'row'}
+        flexDirection="row"
         justifyContent="center"
         alignItems="center"
         gap={1}
       >
-        {compact ? (
-          <Box flexDirection="row" gap={1}>
-            <ControlsPanel />
-            <ScorePanel snapshot={snapshot} />
-          </Box>
-        ) : (
-          <ControlsPanel />
-        )}
+        {!compact ? <ControlsPanel /> : null}
 
         <Box position="relative">
           <BoardView snapshot={snapshot} />
           <CenterMessage status={snapshot.status} />
         </Box>
 
+        {compact ? <ScorePanel snapshot={snapshot} /> : null}
+
         {!compact ? (
           <RightColumn snapshot={snapshot} />
         ) : null}
-
-        {compact ? (
-          <Box flexDirection="row" gap={1}>
-            <NextPanel type={snapshot.nextPiece} />
-          </Box>
-        ) : null}
       </Box>
 
-      <Box width={contentWidth}>
-        <Footer status={snapshot.status} />
-      </Box>
+      {!compact ? (
+        <Box width={contentWidth}>
+          <Footer status={snapshot.status} />
+        </Box>
+      ) : null}
     </Box>
   );
 }

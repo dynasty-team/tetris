@@ -390,28 +390,21 @@ export class GameStateLoop {
     this.saveTriggered = true;
 
     if (this.onSave) {
-      // โหลดเซฟเก่ามาดู high score สูงสุด
       const previousData = this.loadGame();
       const currentScore = this.engine.getScore();
       const previousHighScore = previousData?.highScore ?? 0;
       const isNewHighScore = currentScore > previousHighScore;
-      const highScore = isNewHighScore ? currentScore : previousHighScore;
 
-      // level/linesCleared ต้องเป็นของ "ตาเดียวกัน" กับ highScore ที่บันทึกไว้เสมอ
-      // ถ้าตานี้ไม่ได้ทำลายสถิติ ต้องคง level/linesCleared เดิมของตาที่ทำ highScore
-      // ไว้ ไม่ใช่เขียนทับด้วยค่าของตาปัจจุบันซึ่งอาจเป็นตาที่ทำคะแนนได้น้อยกว่า
-      const level = isNewHighScore
-        ? this.engine.getLevel()
-        : previousData?.level ?? this.engine.getLevel();
-      const linesCleared = isNewHighScore
-        ? this.engine.getLinesClearedTotal()
-        : previousData?.linesCleared ?? this.engine.getLinesClearedTotal();
+      if (!isNewHighScore) return;
+
+      const level = this.engine.getLevel();
+      const linesCleared = this.engine.getLinesClearedTotal();
 
       const saveData: SaveData = {
         version: 1,
-        highScore, // <-- ใช้ค่าที่สูงสุดระหว่างรอบนี้กับรอบก่อนหน้า
-        level, // <-- ของตาที่ทำ highScore จริง ไม่ใช่ของตาปัจจุบันเสมอไป
-        linesCleared, // <-- เช่นเดียวกัน
+        highScore: currentScore,
+        level,
+        linesCleared,
         timestamp: new Date().toISOString(),
       };
 
