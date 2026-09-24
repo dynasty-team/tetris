@@ -137,8 +137,10 @@ describe('GameStateLoop Orchestrator', () => {
 
   test('handleAction(QUIT) สั่งหยุด loop และ trigger save', () => {
     let saved = false;
+    engine.score = 1;
     const loop = new GameStateLoop({
       engine,
+      onLoad: () => null,
       onSave: () => { saved = true; },
     });
     loop.start();
@@ -146,6 +148,26 @@ describe('GameStateLoop Orchestrator', () => {
 
     expect(loop.isRunning()).toBe(false);
     expect(saved).toBe(true);
+  });
+
+  test('ไม่เรียก onSave เมื่อคะแนนไม่ทำลายสถิติเดิม', () => {
+    let saveCount = 0;
+    const loop = new GameStateLoop({
+      engine,
+      onLoad: () => ({
+        version: 1,
+        highScore: 1000,
+        level: 5,
+        linesCleared: 20,
+        timestamp: '2026-09-15T10:00:00.000Z',
+      }),
+      onSave: () => { saveCount++; },
+    });
+    engine.score = 500;
+    loop.start();
+    loop.handleAction('QUIT');
+
+    expect(saveCount).toBe(0);
   });
 
   test('tick() คำนวณคะแนนและเลเวลเมื่อมีการเคลียร์แถว', () => {
@@ -176,6 +198,7 @@ describe('GameStateLoop Orchestrator', () => {
 
     const loop = new GameStateLoop({
       engine,
+      onLoad: () => null,
       onSave: (data) => { savedData = data; },
     });
     loop.start();
