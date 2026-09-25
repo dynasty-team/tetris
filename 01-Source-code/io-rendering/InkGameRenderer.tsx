@@ -143,6 +143,9 @@ function BoardView({ snapshot }: { snapshot: RenderSnapshot }): React.ReactEleme
     return getGhostPiece(snapshot);
   }, [snapshot]);
 
+  // สีเส้น Grid
+  const GRID_COLOR = '#252b40';
+
   return (
     <Box
       flexDirection="column"
@@ -154,38 +157,60 @@ function BoardView({ snapshot }: { snapshot: RenderSnapshot }): React.ReactEleme
       {snapshot.board.map((row, y) => (
         <Box key={y} flexDirection="row">
           {row.map((cell, x) => {
-            const isGhost = ghostPiece ? pieceCellAt(ghostPiece, x, y) : false;
-            const isActive = pieceCellAt(snapshot.activePiece, x, y);
+            const isGhost = ghostPiece
+              ? pieceCellAt(ghostPiece, x, y)
+              : false;
 
-            // Draw order: board -> ghost -> active piece
-            // ดังนั้น active piece จะทับ ghost เมื่อชิ้นส่วนแตะพื้นพอดี
+            const isActive = pieceCellAt(
+              snapshot.activePiece,
+              x,
+              y
+            );
+
+            // Active Piece
             if (isActive) {
               return (
-                <Text key={x} color={PIECE_COLORS[snapshot.activePiece.type]} bold>
+                <Text
+                  key={x}
+                  color={PIECE_COLORS[snapshot.activePiece.type]}
+                  bold
+                >
                   {CELL}
                 </Text>
               );
             }
 
+            // Ghost Piece
             if (isGhost && cell === 0) {
               return (
-                <Text key={x} color={GHOST_COLORS[ghostPiece!.type]} bold>
+                <Text
+                  key={x}
+                  color={GHOST_COLORS[ghostPiece!.type]}
+                  bold
+                >
                   {CELL}
                 </Text>
               );
             }
 
+            // ช่องว่าง -> แสดงเส้น Grid
             if (cell === 0) {
               return (
-                <Text key={x} color="#263044">
-                  {'··'}
+                <Text key={x} color={GRID_COLOR}>
+                  {'┼─'}
                 </Text>
               );
             }
 
+            // Block ที่ตกลงมาแล้ว
             const type = cell as TetrominoType;
+
             return (
-              <Text key={x} color={PIECE_COLORS[type]} bold>
+              <Text
+                key={x}
+                color={PIECE_COLORS[type]}
+                bold
+              >
                 {CELL}
               </Text>
             );
