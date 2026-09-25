@@ -337,8 +337,8 @@ export class GameStateLoop {
       const currentScore = this.engine.getScore();
       const currentHighScore = this.engine.getHighScore();
 
-    if (currentScore > currentHighScore) {
-      this.engine.setHighScore(currentScore);
+      if (currentScore > currentHighScore) {
+        this.engine.setHighScore(currentScore);
       }
 
       const newLevel = calculateLevel(
@@ -346,7 +346,7 @@ export class GameStateLoop {
       );
 
       this.engine.setLevel(newLevel);
-   }
+    }
   }
 
   private handleLockedResult(result: ActionResult): void {
@@ -372,11 +372,6 @@ export class GameStateLoop {
     this.clearTickTimer();
     this.clearLockTimer();
     this.wasLockingBeforePause = false;
-
-    if (this.input) {
-      this.input.stop();
-    }
-
     this.render('gameover');
     this.triggerSave();
     this.notifyEnd('gameover');

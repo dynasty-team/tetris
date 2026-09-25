@@ -54,6 +54,7 @@ const KEY_ACTIONS: Record<string, GameAction> = {
 	w: 'ROTATE',
 	p: 'PAUSE',
 	' ': 'HARD_DROP',
+	'\r': 'QUIT',
 	q: 'QUIT',
 	'\u0003': 'QUIT', // Ctrl+C (\u0003): ป้องกันกรณีปุ่ม Q ใช้งานไม่ได้ใน Raw Mode
 	'\u001b[D': 'MOVE_LEFT',
@@ -65,12 +66,13 @@ const KEY_ACTIONS: Record<string, GameAction> = {
 /**
  * จัดการ Keyboard Input ใน Raw Mode และแปลงเป็น GameAction
  */
-export class KeyboardInput implements InputSource{
+export class KeyboardInput implements InputSource {
 	private readonly input: InputStream;
 	private readonly terminal: TerminalRawMode | undefined;
 	private onAction: ActionHandler | undefined;
 	private reader: InputReader | undefined;
 	private escapeSequence = '';
+	private escapeTimer: ReturnType<typeof setTimeout> | undefined;
 	private started = false;
 
 	public constructor(options: KeyboardInputOptions = {}) {
@@ -124,6 +126,10 @@ export class KeyboardInput implements InputSource{
 
 		void this.reader?.cancel();
 		this.reader = undefined;
+		if (this.escapeTimer !== undefined) {
+			clearTimeout(this.escapeTimer);
+			this.escapeTimer = undefined;
+		}
 
 		// คืนค่า Terminal เป็น Normal Mode เสมอ ป้องกันคอนโซลค้าง
 		if (typeof this.terminal?.setRawMode === 'function') {
@@ -170,6 +176,11 @@ export class KeyboardInput implements InputSource{
 	}
 
 	private handleInput = (chunk: Uint8Array | string): void => {
+		if (this.escapeTimer !== undefined) {
+			clearTimeout(this.escapeTimer);
+			this.escapeTimer = undefined;
+		}
+
 		const input = typeof chunk === 'string' ? chunk : new TextDecoder().decode(chunk);
 		this.escapeSequence += input;
 
@@ -181,6 +192,16 @@ export class KeyboardInput implements InputSource{
 				this.handleAction(parsed.action);
 			}
 			this.escapeSequence = this.escapeSequence.slice(parsed.consumed);
+		}
+
+		if (this.escapeSequence === '\u001b') {
+			this.escapeTimer = setTimeout(() => {
+				if (this.escapeSequence === '\u001b') {
+					this.escapeSequence = '';
+					this.handleAction('QUIT');
+				}
+				this.escapeTimer = undefined;
+			}, 25);
 		}
 	};
 
