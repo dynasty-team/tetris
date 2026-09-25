@@ -1,6 +1,11 @@
 // 02-Tests/io-rendering/keyboard-input.test.ts
 import { describe, expect, test } from 'bun:test';
-import { KeyboardInput, type InputStream, type TerminalRawMode } from '../../01-Source-code/io-rendering/KeyboardInput';
+import {
+  KeyboardInput,
+  type InputStream,
+  type TerminalRawMode,
+  type MenuKeyboardAction,
+} from '../../01-Source-code/io-rendering/KeyboardInput';
 import type { GameAction } from '../../01-Source-code/shared/types';
 
 class MockInputStream implements InputStream {
@@ -91,6 +96,29 @@ describe('KeyboardInput (KeyboardInput.ts)', () => {
       'MOVE_RIGHT',
     ]);
 
+    keyboard.stop();
+  });
+
+  test('รองรับ action ของเมนูด้วย KeyboardInput ตัวเดียวกัน', async () => {
+    const actions: MenuKeyboardAction[] = [];
+    const mockInput = new MockInputStream(['w', 's', '\r', 'q']);
+    const mockTerminal: TerminalRawMode = {
+      isTTY: true,
+      setRawMode: () => {},
+    };
+
+    const keyboard = new KeyboardInput({
+      input: mockInput,
+      terminal: mockTerminal,
+    });
+
+    keyboard.start((action) => {
+      actions.push(action as MenuKeyboardAction);
+    }, 'menu');
+
+    await new Promise((r) => setTimeout(r, 30));
+
+    expect(actions).toEqual(['UP', 'DOWN', 'CONFIRM', 'QUIT']);
     keyboard.stop();
   });
 

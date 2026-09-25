@@ -1,12 +1,12 @@
 // 01-Source-code/io-rendering/runInkGame.ts
 //
-// ประกอบ GameStateLoop + InkGameRenderer โดยให้ Ink เป็นผู้รับ keyboard input
-// จึงไม่เกิดการอ่าน stdin ซ้อนกันระหว่าง Ink กับ KeyboardInput
+// ประกอบ GameStateLoop + InkGameRenderer โดยให้ KeyboardInput เป็นผู้รับ keyboard input
 
 import { GameStateLoop } from '../game-state-loop';
 import { TetrisEngine } from '../core-engine';
 import { loadGame, saveGame } from '../persistence';
 import { createInkGameRenderer } from './InkGameRenderer';
+import { KeyboardInput } from './KeyboardInput';
 
 export async function runInkGame(): Promise<void> {
   const engine = new TetrisEngine();
@@ -16,10 +16,18 @@ export async function runInkGame(): Promise<void> {
   const initialSnapshot = engine.getRenderSnapshot();
 
   let gameLoop: GameStateLoop | undefined;
+  const keyboard = new KeyboardInput();
 
-  const renderer = createInkGameRenderer(initialSnapshot, (action) => {
+  const renderer = createInkGameRenderer(initialSnapshot);
+  keyboard.start((action) => {
+    const status = gameLoop?.getEngine().getRenderSnapshot().status;
+    if (action === 'CONFIRM' || (action === 'HARD_DROP' && status === 'gameover')) {
+      if (status === 'gameover') renderer.exit();
+      return;
+    }
+    if (action === 'UP' || action === 'DOWN') return;
     gameLoop?.handleAction(action);
-  });
+  }, 'game');
 
   gameLoop = new GameStateLoop({
     engine,
@@ -36,11 +44,14 @@ export async function runInkGame(): Promise<void> {
 
   gameLoop.start();
 
-  await renderer.waitForExit();
+  try {
+    await renderer.waitForExit();
 
-  if (gameLoop.isRunning()) {
-    gameLoop.stop();
+    if (gameLoop.isRunning()) {
+      gameLoop.stop();
+    }
+  } finally {
+    keyboard.stop();
+    renderer.unmount();
   }
-
-  renderer.unmount();
 }

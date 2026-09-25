@@ -2,6 +2,10 @@ import type { GameAction, InputSource } from '../shared/types';
 
 export type RepeatableAction = 'MOVE_LEFT' | 'MOVE_RIGHT' | 'SOFT_DROP';
 export type ActionHandler = (action: GameAction) => void;
+export type MenuKeyboardAction = 'UP' | 'DOWN' | 'CONFIRM' | 'QUIT';
+export type KeyboardAction = GameAction | MenuKeyboardAction;
+export type KeyboardActionHandler = (action: KeyboardAction) => void;
+export type KeyboardInputMode = 'game' | 'menu';
 
 export interface TerminalRawMode {
 	isTTY?: boolean;
@@ -31,14 +35,39 @@ function createProcessInput(): InputStream {
 	return {
 		stream: () => ({
 			getReader: () => {
-				const iterator = input[Symbol.asyncIterator]();
+				let cancelled = false;
+				let pendingResolve: ((result: { done: boolean; value?: Uint8Array | string }) => void) | undefined;
+				const onData = (value: Uint8Array | string): void => {
+					const resolve = pendingResolve;
+					pendingResolve = undefined;
+					resolve?.({ done: false, value });
+				};
+				const onEnd = (): void => {
+					const resolve = pendingResolve;
+					pendingResolve = undefined;
+					resolve?.({ done: true });
+				};
+
+				input.on('data', onData);
+				input.once('end', onEnd);
+				input.once('close', onEnd);
+
 				return {
 					read: async () => {
-						const result = await iterator.next();
-						return { done: result.done ?? false, value: result.value };
+						if (cancelled) return { done: true };
+						return new Promise((resolve) => {
+							pendingResolve = resolve;
+						});
 					},
 					cancel: async () => {
-						await iterator.return?.();
+						if (cancelled) return;
+						cancelled = true;
+						input.removeListener('data', onData);
+						input.removeListener('end', onEnd);
+						input.removeListener('close', onEnd);
+						const resolve = pendingResolve;
+						pendingResolve = undefined;
+						resolve?.({ done: true });
 					},
 				};
 			},
@@ -46,20 +75,41 @@ function createProcessInput(): InputStream {
 	};
 }
 
-// แมปปุ่มคีย์บอร์ด -> GameAction (รองรับ WASD, Space, ปุ่มลูกศร ANSI, และ Ctrl+C สำหรับออกจากเกม)
-const KEY_ACTIONS: Record<string, GameAction> = {
+// แมปปุ่มคีย์บอร์ด -> action ของเกมหรือเมนู
+const GAME_KEY_ACTIONS: Record<string, GameAction | 'CONFIRM'> = {
 	a: 'MOVE_LEFT',
 	d: 'MOVE_RIGHT',
 	s: 'SOFT_DROP',
 	w: 'ROTATE',
 	p: 'PAUSE',
 	' ': 'HARD_DROP',
+	'\r': 'CONFIRM',
+	'\n': 'CONFIRM',
 	q: 'QUIT',
 	'\u0003': 'QUIT', // Ctrl+C (\u0003): ป้องกันกรณีปุ่ม Q ใช้งานไม่ได้ใน Raw Mode
 	'\u001b[D': 'MOVE_LEFT',
 	'\u001b[C': 'MOVE_RIGHT',
 	'\u001b[B': 'SOFT_DROP',
 	'\u001b[A': 'ROTATE',
+	'\u001b': 'QUIT',
+};
+
+const MENU_KEY_ACTIONS: Record<string, MenuKeyboardAction> = {
+	w: 'UP',
+	s: 'DOWN',
+	'\u001b[A': 'UP',
+	'\u001bOA': 'UP',
+	'\u001b[B': 'DOWN',
+	'\u001bOB': 'DOWN',
+	'\u001b[5~': 'UP',
+	'\u001b[6~': 'DOWN',
+	'\r': 'CONFIRM',
+	'\n': 'CONFIRM',
+	' ': 'CONFIRM',
+	b: 'QUIT',
+	q: 'QUIT',
+	'\u0003': 'QUIT',
+	'\u001b': 'QUIT',
 };
 
 /**
@@ -68,9 +118,11 @@ const KEY_ACTIONS: Record<string, GameAction> = {
 export class KeyboardInput implements InputSource{
 	private readonly input: InputStream;
 	private readonly terminal: TerminalRawMode | undefined;
-	private onAction: ActionHandler | undefined;
+	private onAction: KeyboardActionHandler | undefined;
+	private mode: KeyboardInputMode = 'game';
 	private reader: InputReader | undefined;
 	private escapeSequence = '';
+	private escapeTimer: ReturnType<typeof setTimeout> | undefined;
 	private started = false;
 
 	public constructor(options: KeyboardInputOptions = {}) {
@@ -80,10 +132,16 @@ export class KeyboardInput implements InputSource{
 			(typeof process !== 'undefined' && process.stdin?.isTTY ? process.stdin : undefined);
 	}
 
-	public start(onAction: ActionHandler): void {
+	public start(onAction: ActionHandler): void;
+	public start(onAction: KeyboardActionHandler, mode: KeyboardInputMode): void;
+	public start(
+		onAction: ActionHandler | KeyboardActionHandler,
+		mode: KeyboardInputMode = 'game',
+	): void {
 		if (this.started) return;
 
-		this.onAction = onAction;
+		this.onAction = onAction as KeyboardActionHandler;
+		this.mode = mode;
 		this.started = true;
 
 		// Safety Net ระดับ Process: คืนค่า Terminal ทันทีเมื่อได้รับสัญญาณขัดจังหวะหรือ Process กำลังจะปิด
@@ -124,6 +182,11 @@ export class KeyboardInput implements InputSource{
 
 		void this.reader?.cancel();
 		this.reader = undefined;
+		if (this.escapeTimer !== undefined) {
+			clearTimeout(this.escapeTimer);
+			this.escapeTimer = undefined;
+		}
+		this.escapeSequence = '';
 
 		// คืนค่า Terminal เป็น Normal Mode เสมอ ป้องกันคอนโซลค้าง
 		if (typeof this.terminal?.setRawMode === 'function') {
@@ -160,7 +223,6 @@ export class KeyboardInput implements InputSource{
 		} catch {
 			if (this.started) {
 				this.stop();
-				throw new Error('Failed to read keyboard input.');
 			}
 		} finally {
 			if (this.started) {
@@ -171,6 +233,10 @@ export class KeyboardInput implements InputSource{
 
 	private handleInput = (chunk: Uint8Array | string): void => {
 		const input = typeof chunk === 'string' ? chunk : new TextDecoder().decode(chunk);
+		if (this.escapeTimer !== undefined) {
+			clearTimeout(this.escapeTimer);
+			this.escapeTimer = undefined;
+		}
 		this.escapeSequence += input;
 
 		while (this.escapeSequence.length > 0) {
@@ -182,24 +248,50 @@ export class KeyboardInput implements InputSource{
 			}
 			this.escapeSequence = this.escapeSequence.slice(parsed.consumed);
 		}
+
+		if (this.escapeSequence === '\u001b') {
+			this.escapeTimer = setTimeout(() => {
+				this.escapeTimer = undefined;
+				if (!this.started || this.escapeSequence !== '\u001b') return;
+				this.escapeSequence = '';
+				this.handleAction(this.mode === 'menu' ? MENU_KEY_ACTIONS['\u001b'] : GAME_KEY_ACTIONS['\u001b']);
+			}, 30);
+		}
 	};
 
 	// แยกแยะปุ่มลูกศร (ANSI Escape Sequence 3 ตัวอักษร เช่น \u001b[A) กับปุ่มตัวอักษรเดี่ยวทั่วไป
-	private readNextAction(): { action?: GameAction; consumed: number } | undefined {
+	private readNextAction(): { action?: KeyboardAction; consumed: number } | undefined {
 		const firstCharacter = this.escapeSequence[0];
 		if (firstCharacter === '\u001b') {
-			if (this.escapeSequence.length === 1) return undefined;
-			if (this.escapeSequence.startsWith('\u001b[') && this.escapeSequence.length < 3) return undefined;
+			if (this.escapeSequence.length === 1) {
+				return undefined;
+			}
 
-			const sequence = this.escapeSequence.slice(0, 3);
-			return { action: KEY_ACTIONS[sequence], consumed: 3 };
+			const sequences = this.mode === 'menu' ? MENU_KEY_ACTIONS : GAME_KEY_ACTIONS;
+			const knownSequence = Object.keys(sequences).find(
+				(sequence) => sequence.length > 1 && this.escapeSequence.startsWith(sequence),
+			);
+			if (knownSequence === undefined) {
+				if (this.escapeSequence.startsWith('\u001b[') && this.escapeSequence.length < 3) return undefined;
+				return { consumed: 1 };
+			}
+
+			const hasIncompleteLongerSequence = Object.keys(sequences).some(
+				(sequence) => sequence.length > this.escapeSequence.length
+					&& sequence.startsWith(this.escapeSequence),
+			);
+			if (hasIncompleteLongerSequence) return undefined;
+
+			return { action: sequences[knownSequence], consumed: knownSequence.length };
 		}
 
-		return { action: KEY_ACTIONS[firstCharacter?.toLowerCase() ?? ''], consumed: 1 };
+		const sequences = this.mode === 'menu' ? MENU_KEY_ACTIONS : GAME_KEY_ACTIONS;
+		const key = firstCharacter?.toLowerCase() ?? '';
+		return { action: sequences[key], consumed: 1 };
 	}
 
 	// ส่ง Action ไปยัง Callback — หากเกิด Error ในเกม จะปิด Raw Mode ให้ก่อน เพื่อไม่ให้ Terminal ค้าง
-	private handleAction(action: GameAction | undefined): void {
+	private handleAction(action: KeyboardAction | undefined): void {
 		if (action === undefined) return;
 
 		try {

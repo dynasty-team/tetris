@@ -6,8 +6,8 @@
 // จึงเหมาะกับ CMD/Windows Terminal มากกว่าการ clear จอทุก frame
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { Box, Text, render, useInput, useStdout } from 'ink';
-import type { ActivePiece, Board, GameAction, RenderSnapshot, TetrominoType } from '../shared/types';
+import { Box, Text, render, useStdout } from 'ink';
+import type { ActivePiece, Board, RenderSnapshot, TetrominoType } from '../shared/types';
 import { BOARD_HEIGHT, BOARD_WIDTH } from '../shared/constants';
 
 const UI_WIDTH = 82;
@@ -459,12 +459,8 @@ function ResponsiveNotice({
 
 function GameApp({
   snapshot,
-  onAction,
-  onExit,
 }: {
   snapshot: RenderSnapshot;
-  onAction: (action: GameAction) => void;
-  onExit: () => void;
 }): React.ReactElement {
   const { stdout } = useStdout();
   const [, forceResize] = useState(0);
@@ -476,51 +472,6 @@ function GameApp({
       stdout.off('resize', onResize);
     };
   }, [stdout]);
-
-  useInput((input, key) => {
-    const normalized = input.toLowerCase();
-
-    if (snapshot.status === 'gameover') {
-      if (key.return || input === ' ' || key.escape || normalized === 'q') {
-        onExit();
-      }
-      return;
-    }
-
-    if (normalized === 'a' || key.leftArrow) {
-      onAction('MOVE_LEFT');
-      return;
-    }
-
-    if (normalized === 'd' || key.rightArrow) {
-      onAction('MOVE_RIGHT');
-      return;
-    }
-
-    if (normalized === 's' || key.downArrow) {
-      onAction('SOFT_DROP');
-      return;
-    }
-
-    if (normalized === 'w' || key.upArrow) {
-      onAction('ROTATE');
-      return;
-    }
-
-    if (input === ' ') {
-      onAction('HARD_DROP');
-      return;
-    }
-
-    if (normalized === 'p') {
-      onAction('PAUSE');
-      return;
-    }
-
-    if (normalized === 'q' || key.escape) {
-      onAction('QUIT');
-    }
-  });
 
   const columns = stdout.columns || 100;
   const rows = stdout.rows || 30;
@@ -580,7 +531,6 @@ export interface InkGameRendererHandle {
 
 export function createInkGameRenderer(
   initialSnapshot: RenderSnapshot,
-  onAction: (action: GameAction) => void,
 ): InkGameRendererHandle {
   let updateSnapshot: ((snapshot: RenderSnapshot) => void) | undefined;
   let resolveExit: (() => void) | undefined;
@@ -595,8 +545,6 @@ export function createInkGameRenderer(
       register={(setter) => {
         updateSnapshot = setter;
       }}
-      onAction={onAction}
-      onExit={() => resolveExit?.()}
     />,
     {
       alternateScreen: true,
@@ -623,13 +571,9 @@ export function createInkGameRenderer(
 function GameBridge({
   initialSnapshot,
   register,
-  onAction,
-  onExit,
 }: {
   initialSnapshot: RenderSnapshot;
   register: (setter: (snapshot: RenderSnapshot) => void) => void;
-  onAction: (action: GameAction) => void;
-  onExit: () => void;
 }): React.ReactElement {
   const [snapshot, setSnapshot] = useState(initialSnapshot);
 
@@ -640,8 +584,6 @@ function GameBridge({
   return (
     <GameApp
       snapshot={snapshot}
-      onAction={onAction}
-      onExit={onExit}
     />
   );
 }
