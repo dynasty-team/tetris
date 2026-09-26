@@ -12,6 +12,7 @@ const TEST_DIR = path.resolve(__dirname, 'test-temp-persistence');
 const TEST_SAVE_FILE = path.join(TEST_DIR, 'test-save.json');
 
 class TestEngine implements CoreEngine {
+  public highScore = 0
   public score = 0;
   public level = 1;
   public linesClearedTotal = 0;
@@ -33,6 +34,8 @@ class TestEngine implements CoreEngine {
       status: this.gameOver ? 'gameover' : 'playing',
     };
   }
+  public getHighScore(): number { return this.highScore; }
+  public setHighScore(hs: number): void { this.highScore = hs; }
   public getScore(): number { return this.score; }
   public getLevel(): number { return this.level; }
   public isGameOver(): boolean { return this.gameOver; }
