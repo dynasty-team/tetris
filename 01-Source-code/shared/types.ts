@@ -17,7 +17,7 @@ export type CellValue = 0 | TetrominoType;
 /** Board[y][x] — ขนาด 20 แถว x 10 คอลัมน์ (row-major, y=0 คือแถวบนสุด) */
 export type Board = CellValue[][];
 
-/** ตำแหน่งอ้างอิงบน board */
+/** ตำแหหหน่งอ้างอิงบน board */
 export interface Position {
   /** คอลัมน์ 0-9 */
   x: number;

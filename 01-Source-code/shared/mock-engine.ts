@@ -23,6 +23,7 @@ export const mockRenderSnapshot: RenderSnapshot = {
     ],
   },
   nextPiece: 'I',
+  highScore: 0,
   score: 0,
   level: 1,
   linesClearedTotal: 0,
