@@ -102,15 +102,16 @@ export class GameStateLoop {
       this.engine.spawnNextPiece();
     }
 
+    // เริ่มรับ keyboard input ก่อนตรวจ Game Over
+    // เพื่อให้หน้า Game Over ยังรับ Q / ESC สำหรับกลับ Main Menu ได้
+    if (this.input) {
+      this.input.start((action: GameAction) => this.handleAction(action));
+    }
+
     // หาก engine อยู่ในสถานะ gameOver ตั้งแต่เริ่ม
     if (this.engine.isGameOver()) {
       this.handleGameOver();
       return;
-    }
-
-    // เริ่มรับ keyboard input
-    if (this.input) {
-      this.input.start((action: GameAction) => this.handleAction(action));
     }
 
     // วาดเฟรมแรก
@@ -373,10 +374,8 @@ export class GameStateLoop {
     this.clearLockTimer();
     this.wasLockingBeforePause = false;
 
-    if (this.input) {
-      this.input.stop();
-    }
-
+    // ห้าม stop KeyboardInput ที่ Game Over
+    // เพราะหน้า Game Over ต้องยังรับ Q / ESC / ENTER / SPACE เพื่อกลับ Main Menu
     this.render('gameover');
     this.triggerSave();
     this.notifyEnd('gameover');

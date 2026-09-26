@@ -214,8 +214,8 @@ describe('GameStateLoop Orchestrator', () => {
     loop.tick();
 
     expect(savedData).not.toBeNull();
-    expect(savedData?.highScore).toBe(500);
-    expect(savedData?.level).toBe(2);
+    expect(savedData!.highScore).toBe(500);
+    expect(savedData!.level).toBe(2);
   });
 
   test('เรียก renderer callback ในแต่ละรอบ', () => {

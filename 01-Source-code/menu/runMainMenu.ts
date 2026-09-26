@@ -6,8 +6,9 @@
 
 import { runInkMainMenu } from '../io-rendering/InkMenuRenderer';
 import { MenuState, type MenuOptionId } from './MenuState';
+import { KeyboardInput } from '../io-rendering/KeyboardInput';
 
-export async function runMainMenu(): Promise<MenuOptionId> {
+export async function runMainMenu(keyboard?: KeyboardInput): Promise<MenuOptionId> {
   const state = new MenuState();
-  return runInkMainMenu(state);
+  return runInkMainMenu(state, keyboard);
 }

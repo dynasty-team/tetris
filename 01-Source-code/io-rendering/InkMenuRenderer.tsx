@@ -5,10 +5,12 @@
 // ส่วนไฟล์นี้รับผิดชอบเฉพาะการวาด UI และ keyboard interaction ของหน้าเมนู
 
 import React, { useEffect, useState } from 'react';
-import { Box, Text, render, useInput, useStdout } from 'ink';
+import { Box, Text, render, useStdout } from 'ink';
 import type { MenuOptionId } from '../menu/MenuState';
 import { MenuState } from '../menu/MenuState';
 import type { SaveData } from '../shared/types';
+import type { KeyboardAction, KeyboardActionHandler } from './KeyboardInput';
+import { KeyboardInput } from './KeyboardInput';
 
 const PANEL_WIDTH = 58;
 const MIN_MENU_WIDTH = 58;
@@ -133,9 +135,11 @@ function SmallScreenNotice({
 export function MainMenuApp({
   state,
   onSelect,
+  registerInput,
 }: {
   state: MenuState;
   onSelect: (id: MenuOptionId) => void;
+  registerInput: (handler: KeyboardActionHandler) => void;
 }): React.ReactElement {
   const { stdout } = useStdout();
   const [selectedIndex, setSelectedIndex] = useState(state.getSelectedIndex());
@@ -149,28 +153,31 @@ export function MainMenuApp({
     };
   }, [stdout]);
 
-  useInput((input, key) => {
-    if (key.upArrow || input.toLowerCase() === 'w') {
-      state.moveUp();
-      setSelectedIndex(state.getSelectedIndex());
-      return;
-    }
+  useEffect(() => {
+    const handleInput = (action: KeyboardAction): void => {
+      if (action === 'UP') {
+        state.moveUp();
+        setSelectedIndex(state.getSelectedIndex());
+        return;
+      }
 
-    if (key.downArrow || input.toLowerCase() === 's') {
-      state.moveDown();
-      setSelectedIndex(state.getSelectedIndex());
-      return;
-    }
+      if (action === 'DOWN') {
+        state.moveDown();
+        setSelectedIndex(state.getSelectedIndex());
+        return;
+      }
 
-    if (key.return || input === ' ') {
-      onSelect(state.getSelectedOption().id);
-      return;
-    }
+      if (action === 'CONFIRM') {
+        onSelect(state.getSelectedOption().id);
+        return;
+      }
 
-    if (input.toLowerCase() === 'q' || key.escape) {
-      onSelect('exit');
-    }
-  });
+      if (action === 'QUIT') onSelect('exit');
+    };
+
+    registerInput(handleInput);
+    return () => registerInput(() => {});
+  }, [onSelect, registerInput, state]);
 
   const options = state.options;
   const selectedId = options[selectedIndex]?.id;
@@ -258,9 +265,11 @@ function StatRow({
 export function HighScoreApp({
   data,
   onBack,
+  registerInput,
 }: {
   data: SaveData | null;
   onBack: () => void;
+  registerInput: (handler: KeyboardActionHandler) => void;
 }): React.ReactElement {
   const { stdout } = useStdout();
   const [, forceResize] = useState(0);
@@ -276,14 +285,14 @@ export function HighScoreApp({
   const columns = stdout.columns || 80;
   const rows = stdout.rows || 30;
 
-  useInput((input, key) => {
-    const normalized = input.toLowerCase();
+  useEffect(() => {
+    const handleInput = (action: KeyboardAction): void => {
+      if (action === 'QUIT' || action === 'CONFIRM') onBack();
+    };
 
-    // รองรับ Esc / B ตาม flow เดิม และ Enter/Space เพื่อให้กลับได้ง่าย
-    if (key.escape || normalized === 'b' || key.return || input === ' ') {
-      onBack();
-    }
-  });
+    registerInput(handleInput);
+    return () => registerInput(() => {});
+  }, [onBack, registerInput]);
 
   if (columns < MIN_MENU_WIDTH || rows < MIN_MENU_HEIGHT) {
     return <SmallScreenNotice width={columns} height={rows} />;
@@ -359,38 +368,63 @@ export function HighScoreApp({
   );
 }
 
-export async function runInkMainMenu(state: MenuState): Promise<MenuOptionId> {
+export async function runInkMainMenu(state: MenuState, keyboard: KeyboardInput = new KeyboardInput()): Promise<MenuOptionId> {
   let result: MenuOptionId = 'exit';
   let instance: ReturnType<typeof render> | undefined;
+  let inputHandler: KeyboardActionHandler = () => {};
 
   instance = render(
     <MainMenuApp
       state={state}
+      registerInput={(handler) => {
+        inputHandler = handler;
+      }}
       onSelect={(id) => {
         result = id;
+        keyboard.stop();
         instance?.unmount();
       }}
     />,
     {
       alternateScreen: true,
-      exitOnCtrlC: true,
+      exitOnCtrlC: false,
     },
   );
+  keyboard.start((action) => inputHandler(action), 'menu');
 
-  await instance.waitUntilExit();
+  try {
+    await instance.waitUntilExit();
+  } finally {
+    keyboard.stop();
+  }
   return result;
 }
 
-export async function runInkHighScore(data: SaveData | null): Promise<void> {
+export async function runInkHighScore(data: SaveData | null, keyboard: KeyboardInput = new KeyboardInput()): Promise<void> {
   let instance: ReturnType<typeof render> | undefined;
+  let inputHandler: KeyboardActionHandler = () => {};
 
   instance = render(
-    <HighScoreApp onBack={() => instance?.unmount()} data={data} />,
+    <HighScoreApp
+      data={data}
+      registerInput={(handler) => {
+        inputHandler = handler;
+      }}
+      onBack={() => {
+        keyboard.stop();
+        instance?.unmount();
+      }}
+    />,
     {
       alternateScreen: true,
-      exitOnCtrlC: true,
+      exitOnCtrlC: false,
     },
   );
+  keyboard.start((action) => inputHandler(action), 'menu');
 
-  await instance.waitUntilExit();
+  try {
+    await instance.waitUntilExit();
+  } finally {
+    keyboard.stop();
+  }
 }
