@@ -32,7 +32,7 @@ Tetris เป็นเกมแนว Puzzle เรียงชิ้นส่�
   - S / ↓ : Soft Drop
   - W / ↑ : Rotate
   - Space : Hard Drop
-  - P : Pause
+  - P : Pause 
   - Q : Quit
   
 - ระบบเกมต้องมี
