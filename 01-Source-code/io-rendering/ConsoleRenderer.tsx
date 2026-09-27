@@ -557,7 +557,8 @@ export function render(snapshot: RenderSnapshot): void {
     if (inkInstance === null) {
 
         inkInstance = inkRender(
-            <App snapshot={snapshot} />
+            <App snapshot={snapshot} />,
+            { alternateScreen: true }
         );
 
         return;
