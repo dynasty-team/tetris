@@ -13,7 +13,7 @@ async function main(): Promise<void> {
     onSave: saveGame,
     onLoad: loadGame
   })
-  gameLoop.start()
+  await gameLoop.start()
 }
 
 void main();
