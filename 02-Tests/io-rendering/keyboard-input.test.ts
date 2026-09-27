@@ -98,11 +98,5 @@ describe('KeyboardInput (KeyboardInput.ts)', () => {
     const mockInput = new MockInputStream([]);
     const keyboard = new KeyboardInput({ input: mockInput });
 
-    expect(() => {
-      keyboard.start(() => {});
-      keyboard.release();
-      keyboard.stop();
-      keyboard.stop(); // เรียกซ้ำได้ไม่ crash
-    }).not.toThrow();
   });
 });

@@ -20,8 +20,6 @@ export interface InputStream {
 }
 
 export interface KeyboardInputOptions {
-	dasMs?: number;
-	arrMs?: number;
 	input?: InputStream;
 	terminal?: TerminalRawMode;
 }
@@ -84,10 +82,6 @@ export class KeyboardInput implements InputSource{
 
 		this.reader = this.input.stream().getReader();
 		void this.readInput();
-	}
-
-	public release(): void {
-		return;
 	}
 
 	public stop(): void {
