@@ -27,7 +27,7 @@ export interface GameStateLoopOptions {
   /** Callback สำหรับบันทึกคะแนน (Persistence) — หากไม่ระบุจะใช้ saveGame เป็นค่าเริ่มต้น */
   onSave?: (data: SaveData) => Promise<void> | void;
   /** Callback สำหรับโหลดข้อมูลเกม (หากไม่ระบุจะใช้ loadGame เป็นค่าเริ่มต้น) */
-  onLoad?: () => SaveData | null;
+  onLoad?: () => SaveData | null | Promise<SaveData | null>;
   /** ตำแหน่งไฟล์สำหรับบันทึกข้อมูล (กรณีใช้ default onSave) */
   saveFilePath?: string;
 }
@@ -42,7 +42,7 @@ export class GameStateLoop {
   private readonly renderer?: (snapshot: RenderSnapshot) => void;
   private readonly input?: InputSource;
   private readonly onSave?: (data: SaveData) => Promise<void> | void;
-  private readonly onLoad?: () => SaveData | null;
+  private readonly onLoad?: () => SaveData | null | Promise<SaveData | null>;
   private readonly saveFilePath?: string;
 
   private running: boolean = false;
@@ -50,6 +50,9 @@ export class GameStateLoop {
   private isGameOverState: boolean = false;
   private timer: ReturnType<typeof setTimeout> | null = null;
   private saveTriggered: boolean = false;
+  private saveTask: Promise<void> | null = null;
+  private loadedSaveData: SaveData | null = null;
+  private hasLoadedSaveData: boolean = false;
   private wasLockingBeforePause: boolean = false;
   private lockHandledDuringAction: boolean = false;
 
@@ -69,7 +72,7 @@ export class GameStateLoop {
   /**
    * เริ่มต้นการทำงานของ Game Loop
    */
-  public start(): void {
+  public async start(): Promise<void> {
     if (this.running) return;
 
     this.running = true;
@@ -80,10 +83,12 @@ export class GameStateLoop {
     this.lockHandledDuringAction = false;
 
     // โหลด high score จาก persistence layer และตั้งค่าให้ engine
+    this.loadedSaveData = await this.loadGame();
+    this.hasLoadedSaveData = true;
     const highScoreEngine = this.engine as CoreEngine & {
       setHighScore?: (highScore: number) => void;
     };
-    highScoreEngine.setHighScore?.(this.loadGame()?.highScore ?? 0);
+    highScoreEngine.setHighScore?.(this.loadedSaveData?.highScore ?? 0);
 
     // หากกระดานยังไม่มี active piece ให้ spawn ชิ้นแรกเตรียมไว้
     const engineTarget = this.engine as unknown as {
@@ -328,8 +333,8 @@ export class GameStateLoop {
       const currentScore = this.engine.getScore();
       const currentHighScore = this.engine.getHighScore();
 
-    if (currentScore > currentHighScore) {
-      this.engine.setHighScore(currentScore);
+      if (currentScore > currentHighScore) {
+        this.engine.setHighScore(currentScore);
       }
 
       const newLevel = calculateLevel(
@@ -337,7 +342,7 @@ export class GameStateLoop {
       );
 
       this.engine.setLevel(newLevel);
-   }
+    }
   }
 
   private handleLockedResult(result: ActionResult): void {
@@ -375,39 +380,39 @@ export class GameStateLoop {
   /**
    * ส่งสัญญาณบันทึกคะแนนไปยัง persistence layer
    */
-  public triggerSave(): void {
-    if (this.saveTriggered) return;
+  public triggerSave(): Promise<void> {
+    if (this.saveTriggered) return this.saveTask ?? Promise.resolve();
     this.saveTriggered = true;
 
-    if (this.onSave) {
-      const previousData = this.loadGame();
+    this.saveTask = this.saveIfNewHighScore();
+    return this.saveTask;
+  }
+
+  private async saveIfNewHighScore(): Promise<void> {
+    if (!this.onSave) return;
+
+    try {
+      if (!this.hasLoadedSaveData) {
+        this.loadedSaveData = await this.loadGame();
+        this.hasLoadedSaveData = true;
+      }
+
       const currentScore = this.engine.getScore();
-      const previousHighScore = previousData?.highScore ?? 0;
-      const isNewHighScore = currentScore > previousHighScore;
-
-      if (!isNewHighScore) return;
-
-      const level = this.engine.getLevel();
-      const linesCleared = this.engine.getLinesClearedTotal();
+      const previousHighScore = this.loadedSaveData?.highScore ?? 0;
+      if (currentScore <= previousHighScore) return;
 
       const saveData: SaveData = {
         version: 1,
         highScore: currentScore,
-        level,
-        linesCleared,
+        level: this.engine.getLevel(),
+        linesCleared: this.engine.getLinesClearedTotal(),
         timestamp: new Date().toISOString(),
       };
 
-      try {
-        const result = this.onSave(saveData);
-        if (result instanceof Promise) {
-          result.catch((error) => {
-            console.error('Failed to save game data:', error);
-          });
-        }
-      } catch (error) {
-        console.error('Failed to save game data:', error);
-      }
+      await this.onSave(saveData);
+      this.loadedSaveData = saveData;
+    } catch (error) {
+      console.error('Failed to save game data:', error);
     }
   }
 
@@ -415,9 +420,9 @@ export class GameStateLoop {
   /**
    * โหลดข้อมูลเกมที่เคยบันทึกไว้
    */
-  public loadGame(): SaveData | null {
+  public loadGame(): Promise<SaveData | null> {
     if (this.onLoad) {
-      return this.onLoad();
+      return Promise.resolve(this.onLoad());
     }
     return loadGame(this.saveFilePath);
   }

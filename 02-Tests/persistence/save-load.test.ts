@@ -3,7 +3,7 @@
 import { describe, expect, test, beforeEach, afterEach } from 'bun:test';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { saveGame, loadGame, SaveManager, validateSaveData, CURRENT_SAVE_VERSION } from '../../01-Source-code/persistence';
+import { saveGame, loadGame, validateSaveData, CURRENT_SAVE_VERSION } from '../../01-Source-code/persistence';
 import type { SaveData, CoreEngine, ActionResult, RenderSnapshot } from '../../01-Source-code/shared/types';
 import { GameStateLoop } from '../../01-Source-code/game-state-loop';
 import { mockRenderSnapshot } from '../../01-Source-code/shared/mock-engine';
@@ -44,7 +44,7 @@ class TestEngine implements CoreEngine {
   public getLinesClearedTotal(): number { return this.linesClearedTotal; }
 }
 
-describe('Persistence - saveGame & SaveManager', () => {
+describe('Persistence - saveGame & loadGame', () => {
   beforeEach(() => {
     if (fs.existsSync(TEST_DIR)) {
       fs.rmSync(TEST_DIR, { recursive: true, force: true });
@@ -57,7 +57,7 @@ describe('Persistence - saveGame & SaveManager', () => {
     }
   });
 
-  test('saveGame() เขียนข้อมูลลงไฟล์ JSON ตาม schema ถูกต้อง (สร้างไฟล์ใหม่)', () => {
+  test('saveGame() เขียนข้อมูลลงไฟล์ JSON ตาม schema ถูกต้อง (สร้างไฟล์ใหม่)', async () => {
     const data: SaveData = {
       version: CURRENT_SAVE_VERSION,
       highScore: 1250,
@@ -66,7 +66,7 @@ describe('Persistence - saveGame & SaveManager', () => {
       timestamp: '2026-09-15T10:00:00.000Z',
     };
 
-    saveGame(data, TEST_SAVE_FILE);
+    await saveGame(data, TEST_SAVE_FILE);
 
     expect(fs.existsSync(TEST_SAVE_FILE)).toBe(true);
     const content = fs.readFileSync(TEST_SAVE_FILE, 'utf-8');
@@ -76,7 +76,7 @@ describe('Persistence - saveGame & SaveManager', () => {
     expect(validateSaveData(parsed)).toBe(true);
   });
 
-  test('saveGame() ทำการ overwrite ไฟล์เดิมได้อย่างถูกต้อง', () => {
+  test('saveGame() ทำการ overwrite ไฟล์เดิมได้อย่างถูกต้อง', async () => {
     const initialData: SaveData = {
       version: CURRENT_SAVE_VERSION,
       highScore: 500,
@@ -84,7 +84,7 @@ describe('Persistence - saveGame & SaveManager', () => {
       linesCleared: 2,
       timestamp: '2026-09-15T08:00:00.000Z',
     };
-    saveGame(initialData, TEST_SAVE_FILE);
+    await saveGame(initialData, TEST_SAVE_FILE);
 
     const updatedData: SaveData = {
       version: CURRENT_SAVE_VERSION,
@@ -93,7 +93,7 @@ describe('Persistence - saveGame & SaveManager', () => {
       linesCleared: 15,
       timestamp: '2026-09-15T12:00:00.000Z',
     };
-    saveGame(updatedData, TEST_SAVE_FILE);
+    await saveGame(updatedData, TEST_SAVE_FILE);
 
     const content = fs.readFileSync(TEST_SAVE_FILE, 'utf-8');
     const parsed = JSON.parse(content);
@@ -103,7 +103,7 @@ describe('Persistence - saveGame & SaveManager', () => {
     expect(parsed.linesCleared).toBe(15);
   });
 
-  test('saveGame() จัดการ error แบบ graceful กรณีเขียนไฟล์ไม่ได้ (เช่น path เป็น directory) โดยไม่ crash', () => {
+  test('saveGame() จัดการ error แบบ graceful กรณีเขียนไฟล์ไม่ได้ (เช่น path เป็น directory) โดยไม่ crash', async () => {
     const data: SaveData = {
       version: CURRENT_SAVE_VERSION,
       highScore: 100,
@@ -113,26 +113,22 @@ describe('Persistence - saveGame & SaveManager', () => {
     };
 
     fs.mkdirSync(TEST_DIR, { recursive: true });
-    expect(() => {
-      saveGame(data, TEST_DIR);
-    }).not.toThrow();
+    await expect(saveGame(data, TEST_DIR)).resolves.toBeUndefined();
   });
 
-  test('saveGame() จัดการกรณีข้อมูลไม่ตรง schema แบบ graceful โดยไม่ crash', () => {
+  test('saveGame() จัดการกรณีข้อมูลไม่ตรง schema แบบ graceful โดยไม่ crash', async () => {
     const invalidData = {
       version: 999, // invalid version
       highScore: 'not-a-number',
     } as unknown as SaveData;
 
-    expect(() => {
-      saveGame(invalidData, TEST_SAVE_FILE);
-    }).not.toThrow();
+    await expect(saveGame(invalidData, TEST_SAVE_FILE)).resolves.toBeUndefined();
 
     // ต้องไม่สร้างไฟล์ที่มีข้อมูลผิด schema ขึ้นมา
     expect(fs.existsSync(TEST_SAVE_FILE)).toBe(false);
   });
 
-  test('loadGame() สามารถโหลดไฟล์เซฟและตรวจสอบ schema ได้ถูกต้อง', () => {
+  test('loadGame() สามารถโหลดไฟล์เซฟและตรวจสอบ schema ได้ถูกต้อง', async () => {
     const data: SaveData = {
       version: CURRENT_SAVE_VERSION,
       highScore: 3000,
@@ -140,49 +136,27 @@ describe('Persistence - saveGame & SaveManager', () => {
       linesCleared: 20,
       timestamp: '2026-09-15T15:00:00.000Z',
     };
-    saveGame(data, TEST_SAVE_FILE);
+    await saveGame(data, TEST_SAVE_FILE);
 
-    const loaded = loadGame(TEST_SAVE_FILE);
+    const loaded = await loadGame(TEST_SAVE_FILE);
     expect(loaded).not.toBeNull();
     expect(loaded).toEqual(data);
   });
 
-  test('loadGame() คืนค่า null แบบ graceful เมื่อไฟล์ไม่มีอยู่จริง', () => {
-    const loaded = loadGame('./non-existent-save-file.json');
+  test('loadGame() คืนค่า null แบบ graceful เมื่อไฟล์ไม่มีอยู่จริง', async () => {
+    const loaded = await loadGame('./non-existent-save-file.json');
     expect(loaded).toBeNull();
   });
 
-  test('loadGame() คืนค่า null แบบ graceful เมื่อไฟล์เสียหาย (corrupted JSON)', () => {
+  test('loadGame() คืนค่า null แบบ graceful เมื่อไฟล์เสียหาย (corrupted JSON)', async () => {
     fs.mkdirSync(TEST_DIR, { recursive: true });
     fs.writeFileSync(TEST_SAVE_FILE, '{ corrupted json content', 'utf-8');
 
-    const loaded = loadGame(TEST_SAVE_FILE);
+    const loaded = await loadGame(TEST_SAVE_FILE);
     expect(loaded).toBeNull();
   });
 
-  test('SaveManager class ใช้งานได้ทั้ง instance และ static methods', () => {
-    const manager = new SaveManager(TEST_SAVE_FILE);
-    const data: SaveData = {
-      version: CURRENT_SAVE_VERSION,
-      highScore: 800,
-      level: 2,
-      linesCleared: 4,
-      timestamp: '2026-09-15T14:00:00.000Z',
-    };
-
-    manager.save(data);
-    expect(fs.existsSync(TEST_SAVE_FILE)).toBe(true);
-
-    const loaded = manager.load();
-    expect(loaded).toEqual(data);
-
-    // Static methods
-    SaveManager.saveGame(data, TEST_SAVE_FILE);
-    const loadedStatic = SaveManager.loadGame(TEST_SAVE_FILE);
-    expect(loadedStatic).toEqual(data);
-  });
-
-  test('เชื่อมต่อเข้ากับ GameStateLoop: เรียก onSave เมื่อเกิด Game Over และบันทึกสถานะได้ถูกต้อง', () => {
+  test('เชื่อมต่อเข้ากับ GameStateLoop: เรียก onSave เมื่อเกิด Game Over และบันทึกสถานะได้ถูกต้อง', async () => {
     let savedDataReceived = null as SaveData | null;
     const engine = new TestEngine();
     engine.score = 900;
@@ -192,16 +166,17 @@ describe('Persistence - saveGame & SaveManager', () => {
     const loop = new GameStateLoop({
       engine,
       onLoad: () => null,
-      onSave: (data) => {
+      onSave: async (data) => {
         savedDataReceived = data;
-        saveGame(data, TEST_SAVE_FILE);
+        await saveGame(data, TEST_SAVE_FILE);
       },
     });
 
-    loop.start();
+    await loop.start();
     // จำลอง Game Over
     engine.gameOver = true;
     loop.tick();
+    await loop.triggerSave();
 
     expect(savedDataReceived).not.toBeNull();
     expect(savedDataReceived?.highScore).toBe(900);
@@ -210,11 +185,11 @@ describe('Persistence - saveGame & SaveManager', () => {
 
     // ตรวจสอบไฟล์ที่เขียนลง disk
     expect(fs.existsSync(TEST_SAVE_FILE)).toBe(true);
-    const diskData = loadGame(TEST_SAVE_FILE);
+    const diskData = await loadGame(TEST_SAVE_FILE);
     expect(diskData?.highScore).toBe(900);
   });
 
-  test('เชื่อมต่อเข้ากับ GameStateLoop: เรียก onSave เมื่อผู้เล่นกด QUIT', () => {
+  test('เชื่อมต่อเข้ากับ GameStateLoop: เรียก onSave เมื่อผู้เล่นกด QUIT', async () => {
     let savedDataReceived = null as SaveData | null;
     const engine = new TestEngine();
     engine.score = 450;
@@ -224,23 +199,24 @@ describe('Persistence - saveGame & SaveManager', () => {
     const loop = new GameStateLoop({
       engine,
       onLoad: () => null,
-      onSave: (data) => {
+      onSave: async (data) => {
         savedDataReceived = data;
-        saveGame(data, TEST_SAVE_FILE);
+        await saveGame(data, TEST_SAVE_FILE);
       },
     });
 
-    loop.start();
+    await loop.start();
     loop.handleAction('QUIT');
+    await loop.triggerSave();
 
     expect(savedDataReceived).not.toBeNull();
     expect(savedDataReceived?.highScore).toBe(450);
 
-    const diskData = loadGame(TEST_SAVE_FILE);
+    const diskData = await loadGame(TEST_SAVE_FILE);
     expect(diskData?.highScore).toBe(450);
   });
 
-  test('เชื่อมต่อเข้ากับ GameStateLoop: บันทึกข้อมูลอัตโนมัติด้วย default onSave (saveGame) เมื่อไม่ได้ระบุ callback', () => {
+  test('เชื่อมต่อเข้ากับ GameStateLoop: บันทึกข้อมูลอัตโนมัติด้วย default onSave (saveGame) เมื่อไม่ได้ระบุ callback', async () => {
     const engine = new TestEngine();
     engine.score = 1200;
     engine.level = 3;
@@ -252,11 +228,12 @@ describe('Persistence - saveGame & SaveManager', () => {
       saveFilePath: TEST_SAVE_FILE,
     });
 
-    loop.start();
+    await loop.start();
     loop.handleAction('QUIT');
+    await loop.triggerSave();
 
     expect(fs.existsSync(TEST_SAVE_FILE)).toBe(true);
-    const diskData = loadGame(TEST_SAVE_FILE);
+    const diskData = await loadGame(TEST_SAVE_FILE);
     expect(diskData?.highScore).toBe(1200);
     expect(diskData?.level).toBe(3);
     expect(diskData?.linesCleared).toBe(10);
@@ -273,15 +250,13 @@ describe('Persistence - saveGame & SaveManager', () => {
       onSave: async (data) => {
         await Promise.resolve();
         asyncSaved = true;
-        saveGame(data, TEST_SAVE_FILE);
+        await saveGame(data, TEST_SAVE_FILE);
       },
     });
 
-    loop.triggerSave();
-    await new Promise((r) => setTimeout(r, 10));
-
+    await loop.triggerSave();
     expect(asyncSaved).toBe(true);
-    const diskData = loadGame(TEST_SAVE_FILE);
+    const diskData = await loadGame(TEST_SAVE_FILE);
     expect(diskData?.highScore).toBe(770);
   });
 });

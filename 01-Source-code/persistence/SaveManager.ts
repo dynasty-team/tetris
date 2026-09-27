@@ -4,7 +4,7 @@
 // รองรับการเขียนและอ่านไฟล์ JSON ตาม SaveData schema
 // พร้อมการจัดการข้อผิดพลาด (Graceful Error Handling) เพื่อไม่ให้เกม crash
 
-import * as fs from 'node:fs';
+import { mkdir } from 'node:fs/promises';
 import * as path from 'node:path';
 import type { SaveData } from '../shared/types';
 import { validateSaveData } from './schema';
@@ -19,7 +19,7 @@ export const DEFAULT_SAVE_FILE = './save-data.json';
  * @param data ข้อมูล SaveData ที่ต้องการบันทึก
  * @param filePath ตำแหน่งไฟล์ที่ต้องการบันทึก (ค่าเริ่มต้น: './save-data.json')
  */
-export function saveGame(data: SaveData, filePath: string = DEFAULT_SAVE_FILE): void {
+export async function saveGame(data: SaveData, filePath: string = DEFAULT_SAVE_FILE): Promise<void> {
   try {
     // ตรวจสอบ schema ก่อนบันทึก
     if (!validateSaveData(data)) {
@@ -28,19 +28,20 @@ export function saveGame(data: SaveData, filePath: string = DEFAULT_SAVE_FILE): 
     }
 
     // ตรวจสอบว่า filePath เป็น directory หรือไม่
-    if (filePath.endsWith('/') || filePath.endsWith('\\') || (fs.existsSync(filePath) && fs.statSync(filePath).isDirectory())) {
+    const file = Bun.file(filePath);
+    if (filePath.endsWith('/') || filePath.endsWith('\\') || ((await file.exists()) && (await file.stat()).isDirectory())) {
       console.error(`Failed to save game: "${filePath}" is a directory.`);
       return;
     }
 
     // สร้าง directory หากยังไม่มี
     const dir = path.dirname(filePath);
-    if (dir && dir !== '.' && !fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
+    if (dir && dir !== '.') {
+      await mkdir(dir, { recursive: true });
     }
 
     const jsonString = JSON.stringify(data, null, 2);
-    fs.writeFileSync(filePath, jsonString, 'utf-8');
+    await Bun.write(filePath, jsonString);
   } catch (error) {
     // จัดการข้อผิดพลาดแบบ graceful (เช่น EACCES, ENOSPC, EPERM) โดยไม่ throw ออกไปขัดจังหวะเกม
     const errorMessage = error instanceof Error ? error.message : String(error);
@@ -56,18 +57,19 @@ export function saveGame(data: SaveData, filePath: string = DEFAULT_SAVE_FILE): 
  * @param filePath ตำแหน่งไฟล์ที่ต้องการอ่าน (ค่าเริ่มต้น: './save-data.json')
  * @returns SaveData หากโหลดและ validate ผ่าน หรือ null หากล้มเหลว
  */
-export function loadGame(filePath: string = DEFAULT_SAVE_FILE): SaveData | null {
+export async function loadGame(filePath: string = DEFAULT_SAVE_FILE): Promise<SaveData | null> {
   try {
-    if (!fs.existsSync(filePath)) {
+    const file = Bun.file(filePath);
+    if (!(await file.exists())) {
       return null;
     }
 
-    if (fs.statSync(filePath).isDirectory()) {
+    if ((await file.stat()).isDirectory()) {
       console.error(`Failed to load game: "${filePath}" is a directory.`);
       return null;
     }
 
-    const content = fs.readFileSync(filePath, 'utf-8');
+    const content = await file.text();
     const parsed: unknown = JSON.parse(content);
 
     if (validateSaveData(parsed)) {
@@ -83,36 +85,7 @@ export function loadGame(filePath: string = DEFAULT_SAVE_FILE): SaveData | null 
   }
 }
 
-/**
- * Class SaveManager สำหรับจัดการ Persistence ในรูปแบบ Object-Oriented
- */
-export class SaveManager {
-  private readonly filePath: string;
 
-  constructor(filePath: string = DEFAULT_SAVE_FILE) {
-    this.filePath = filePath;
-  }
 
-  /**
-   * บันทึกข้อมูลเกมลงใน path ที่กำหนดใน instance
-   */
-  public save(data: SaveData): void {
-    saveGame(data, this.filePath);
-  }
 
-  /**
-   * โหลดข้อมูลเกมจาก path ที่กำหนดใน instance
-   */
-  public load(): SaveData | null {
-    return loadGame(this.filePath);
-  }
-
-  public static saveGame(data: SaveData, filePath: string = DEFAULT_SAVE_FILE): void {
-    saveGame(data, filePath);
-  }
-
-  public static loadGame(filePath: string = DEFAULT_SAVE_FILE): SaveData | null {
-    return loadGame(filePath);
-  }
-}
 
