@@ -1,5 +1,5 @@
 import React from "react";
-import { Box, Text, render as inkRender } from "ink";
+import { Box, Text, useWindowSize, render as inkRender } from "ink";
 
 import type {
     ActivePiece,
@@ -13,6 +13,12 @@ import {
     BOARD_WIDTH,
     BOARD_HEIGHT
 } from "../shared/constants";
+
+import {
+    MIN_TERMINAL_WIDTH,
+    MIN_TERMINAL_HEIGHT,
+    isTerminalTooSmall
+} from "./layout";
 
 
 const EMPTY_CELL: CellValue = 0;
@@ -463,6 +469,79 @@ function GameUI({
 
 
 // =============================
+// Minimum Terminal Size Guard
+// =============================
+
+// แสดงเมื่อเทอร์มินัลเล็กเกินกว่าจะวาด Tetris UI ได้ครบโดยไม่ overflow/ทับกัน
+// ตัว warning เองก็ responsive: บีบตามขนาดจริง (columns/rows) และให้ Text wrap แทนการ cut off
+function TooSmallWarning({
+    columns,
+    rows
+}: {
+    columns: number;
+    rows: number
+}): React.ReactElement {
+
+    return (
+        <Box
+            width={columns}
+            height={rows}
+            flexDirection="column"
+            alignItems="center"
+            justifyContent="center"
+            paddingX={1}
+        >
+
+            <Text color="red" bold wrap="wrap">
+                Terminal window is too small.
+            </Text>
+
+            <Text color="yellow" wrap="wrap">
+                Please resize your terminal to a larger size to play Tetris.
+            </Text>
+
+            <Box marginTop={1}>
+                <Text dimColor wrap="wrap">
+                    {`Needs at least ${MIN_TERMINAL_WIDTH}x${MIN_TERMINAL_HEIGHT} (current: ${columns}x${rows})`}
+                </Text>
+            </Box>
+
+        </Box>
+    );
+}
+
+
+// =============================
+// Root Component
+// =============================
+
+// จุดเดียวที่ตัดสินใจว่าจะวาดเกมจริง (GameUI) หรือจอเตือนขนาดเทอร์มินัล (TooSmallWarning)
+// ใช้ Ink's useWindowSize() ซึ่งจะ re-render อัตโนมัติทุกครั้งที่เทอร์มินัลถูก resize
+// ทำให้ resize ระหว่างเล่นเกมทำงานได้โดยไม่ต้องรอ renderer(snapshot) ถูกเรียกใหม่จากภายนอก
+function App({
+    snapshot
+}: {
+    snapshot: RenderSnapshot
+}): React.ReactElement {
+
+    const { columns, rows } = useWindowSize();
+
+    if (isTerminalTooSmall(columns, rows)) {
+        return (
+            <TooSmallWarning
+                columns={columns}
+                rows={rows}
+            />
+        );
+    }
+
+    return (
+        <GameUI snapshot={snapshot} />
+    );
+}
+
+
+// =============================
 // Renderer
 // =============================
 
@@ -478,7 +557,7 @@ export function render(snapshot: RenderSnapshot): void {
     if (inkInstance === null) {
 
         inkInstance = inkRender(
-            <GameUI snapshot={snapshot} />
+            <App snapshot={snapshot} />
         );
 
         return;
@@ -488,7 +567,7 @@ export function render(snapshot: RenderSnapshot): void {
     // ครั้งต่อ ๆ ไป
     // Update UI ตัวเดิมแทนการสร้างใหม่
     inkInstance.rerender(
-        <GameUI snapshot={snapshot} />
+        <App snapshot={snapshot} />
     );
 }
 
