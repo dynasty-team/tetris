@@ -1,21 +1,47 @@
-# tetris
+
+<h1 align="center">Tetris</h1>
+
+<p align="center">
+  Console-based Tetris game developed with TypeScript and Bun.
+</p>
+
+<p align="center">
+  <img src="./03-Documentation/img/325189358.jpg" width="200">
+</p>
 
 ## Document
 
-- [tetris](#tetris)
-  - [Document](#document)
-  - [Game Overview](#game-overview)
-  - [Requirements](#requirements)
-  - [Game Rules](#game-rules)
-  - [Architecture](#architecture)
-    - [Project Structure](#project-structure)
-    - [System Flow](#system-flow)
-      - [Persistence Layer (Save System)](#persistence-layer-save-system)
-    - [OOP \& FP Implementation](#oop--fp-implementation)
-    - [Testing](#testing)
-  - [How to Run](#how-to-run)
-  - [How to Test](#how-to-test)
-  - [Known Limitations](#known-limitations)
+- [Document](#document)
+- [🛠️ Tech Stack](#️-tech-stack)
+- [Game Overview](#game-overview)
+- [Requirements](#requirements)
+- [Game Rules](#game-rules)
+- [Architecture](#architecture)
+  - [Project Structure](#project-structure)
+  - [System Flow](#system-flow)
+    - [Persistence Layer (Save System)](#persistence-layer-save-system)
+  - [OOP \& FP Implementation](#oop--fp-implementation)
+  - [Testing](#testing)
+- [How to Run](#how-to-run)
+- [How to Test](#how-to-test)
+- [Known Limitations](#known-limitations)
+
+
+## 🛠️ Tech Stack
+
+<table align="center">
+  <tr>
+    <td align="center">
+      <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/typescript/typescript-original.svg" width="70"><br>
+      TypeScript
+    </td>
+    <td width="30"></td>
+    <td align="center">
+      <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/bun/bun-original.svg" width="70"><br>
+      Bun
+    </td>
+  </tr>
+</table>
 
 ## Game Overview
 Tetris เป็นเกมแนว Puzzle เรียงชิ้นส่วนบล็อกรูปทรงต่างๆ (Tetromino)แบบผู้เล่นคนเดียว 
@@ -264,3 +290,5 @@ bun test
 - การแสดงผลและ Keyboard Input อาจจะแตกต่างกันตาม Terminal ที่ใช้งาน
 - การเซฟเกมเก็บแค่สถิติ high score ไม่ได้เก็บสถานะ กระดาน ผู้เล่นไม่สามารถเล่นต่อจากเกมที่ค้างไว้ได้ 
 - ยังไม่มี hold piece และ ghost piece แสดงตำแหน่งที่จะตก
+
+
