@@ -9,6 +9,14 @@
   <img src="./03-Documentation/img/325189358.jpg" width="200">
 </p>
 
+## 🛠️ Tech Stack
+
+<p align="center">
+  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/typescript/typescript-original.svg" width="70" alt="TypeScript">
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/bun/bun-original.svg" width="70" alt="Bun">
+</p>
+
 ## Document
 
 - [Document](#document)
@@ -27,21 +35,7 @@
 - [Known Limitations](#known-limitations)
 
 
-## 🛠️ Tech Stack
 
-<table align="center">
-  <tr>
-    <td align="center">
-      <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/typescript/typescript-original.svg" width="70"><br>
-      TypeScript
-    </td>
-    <td width="30"></td>
-    <td align="center">
-      <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/bun/bun-original.svg" width="70"><br>
-      Bun
-    </td>
-  </tr>
-</table>
 
 ## Game Overview
 Tetris เป็นเกมแนว Puzzle เรียงชิ้นส่วนบล็อกรูปทรงต่างๆ (Tetromino)แบบผู้เล่นคนเดียว 
