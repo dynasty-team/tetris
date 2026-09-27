@@ -1,6 +1,6 @@
 import { TetrisEngine } from './01-Source-code/core-engine';
 import { GameStateLoop } from './01-Source-code/game-state-loop';
-import { render, KeyboardInput } from './01-Source-code/io-rendering'
+import { render, unmountRenderer, KeyboardInput } from './01-Source-code/io-rendering'
 import { loadGame, saveGame } from './01-Source-code/persistence';
 
 async function main(): Promise<void> {
@@ -10,6 +10,7 @@ async function main(): Promise<void> {
     engine,
     input,
     renderer: render,
+    onStop: unmountRenderer,
     onSave: saveGame,
     onLoad: loadGame
   })

@@ -32,7 +32,11 @@ describe('isTerminalTooSmall', () => {
 	});
 
 	test('is false comfortably above the minimum size', () => {
-		expect(isTerminalTooSmall(120, 40)).toBe(false);
+		expect(isTerminalTooSmall(120, 50)).toBe(false);
+	});
+
+	test('fits a 156x41 terminal without showing the warning', () => {
+		expect(isTerminalTooSmall(156, 41)).toBe(false);
 	});
 
 	test('is true when width is one column short', () => {
@@ -41,6 +45,10 @@ describe('isTerminalTooSmall', () => {
 
 	test('is true when height is one row short', () => {
 		expect(isTerminalTooSmall(MIN_TERMINAL_WIDTH, MIN_TERMINAL_HEIGHT - 1)).toBe(true);
+	});
+
+	test('still shows the warning when the terminal is too short', () => {
+		expect(isTerminalTooSmall(156, 27)).toBe(true);
 	});
 
 	test('is true when both dimensions are far too small (e.g. default 80x24 fallback)', () => {
