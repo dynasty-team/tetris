@@ -128,8 +128,8 @@ tetris/
 │   └── decision-log.md
 │
 ├── 04-Demo/
-│   └── .gitkeep
-|   └── tetris-demo.mp4 
+│   ├── .gitkeep
+│   └── tetris-demo.mp4
 ├── index.ts
 ├── package.json
 ├── tsconfig.json
