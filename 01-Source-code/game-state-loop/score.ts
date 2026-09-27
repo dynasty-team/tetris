@@ -1,8 +1,5 @@
 import type { ActionResult } from '../shared/types';
 
-
-
-
 export function calculateScore(linesCleared: number, level: number): number {
   // ดัก level ขั้นต่ำ 1 และปัดเศษ
   const safeLevel = !Number.isFinite(level) || level < 1 ? 1 : Math.floor(level);
@@ -20,15 +17,4 @@ export function calculateScore(linesCleared: number, level: number): number {
   const bonus = lineBonus[linesCleared] ?? 0;
 
   return Math.round(BASE_SCORE * bonus * safeLevel);
-}
-
-/**
- * คำนวณคะแนนที่ได้จากผลลัพธ์การกระทำ (ActionResult)
- * โดยจะนับจำนวนแถวที่เคลียร์จาก result.linesCleared.length
- */
-export function getScoreFromActionResult(result: ActionResult, level: number): number {
-  if (!result.linesCleared || result.linesCleared.length === 0) {
-    return 0;
-  }
-  return calculateScore(result.linesCleared.length, level);
 }
