@@ -4,43 +4,24 @@ import { describe, expect, test, beforeEach, afterEach } from 'bun:test';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { saveGame, loadGame, validateSaveData, CURRENT_SAVE_VERSION } from '../../01-Source-code/persistence';
-import type { SaveData, CoreEngine, ActionResult, RenderSnapshot } from '../../01-Source-code/shared/types';
+import type { SaveData, CoreEngine, ActionResult } from '../../01-Source-code/shared/types';
 import { GameStateLoop } from '../../01-Source-code/game-state-loop';
-import { mockRenderSnapshot } from '../../01-Source-code/shared/mock-engine';
 
 const TEST_DIR = path.resolve(__dirname, 'test-temp-persistence');
 const TEST_SAVE_FILE = path.join(TEST_DIR, 'test-save.json');
 
-class TestEngine implements CoreEngine {
+class TestEngine {
   public highScore = 0
   public score = 0;
   public level = 1;
   public linesClearedTotal = 0;
   public gameOver = false;
 
-  public moveLeft(): ActionResult { return { success: true, linesCleared: [], gameOver: this.gameOver }; }
-  public moveRight(): ActionResult { return { success: true, linesCleared: [], gameOver: this.gameOver }; }
-  public softDrop(): ActionResult { return { success: true, linesCleared: [], gameOver: this.gameOver }; }
-  public rotate(): ActionResult { return { success: true, linesCleared: [], gameOver: this.gameOver }; }
-  public hardDrop(): ActionResult { return { success: true, linesCleared: [], gameOver: this.gameOver }; }
   public tick(): ActionResult { return { success: true, linesCleared: [], gameOver: this.gameOver }; }
-  public spawnNextPiece(): ActionResult { return { success: true, linesCleared: [], gameOver: this.gameOver }; }
-  public getRenderSnapshot(): RenderSnapshot {
-    return {
-      ...mockRenderSnapshot,
-      score: this.score,
-      level: this.level,
-      linesClearedTotal: this.linesClearedTotal,
-      status: this.gameOver ? 'gameover' : 'playing',
-    };
-  }
-  public getHighScore(): number { return this.highScore; }
   public setHighScore(hs: number): void { this.highScore = hs; }
   public getScore(): number { return this.score; }
   public getLevel(): number { return this.level; }
   public isGameOver(): boolean { return this.gameOver; }
-  public addScore(points: number): void { this.score += points; }
-  public setLevel(lvl: number): void { this.level = lvl; }
   public getLinesClearedTotal(): number { return this.linesClearedTotal; }
 }
 
@@ -116,6 +97,18 @@ describe('Persistence - saveGame & loadGame', () => {
     await expect(saveGame(data, TEST_DIR)).resolves.toBeUndefined();
   });
 
+  test('saveGame() จัดการ error จาก Bun I/O แบบ graceful', async () => {
+    const data: SaveData = {
+      version: CURRENT_SAVE_VERSION,
+      highScore: 100,
+      level: 1,
+      linesCleared: 1,
+      timestamp: new Date().toISOString(),
+    };
+
+    await expect(saveGame(data, '\0')).resolves.toBeUndefined();
+  });
+
   test('saveGame() จัดการกรณีข้อมูลไม่ตรง schema แบบ graceful โดยไม่ crash', async () => {
     const invalidData = {
       version: 999, // invalid version
@@ -148,9 +141,30 @@ describe('Persistence - saveGame & loadGame', () => {
     expect(loaded).toBeNull();
   });
 
+  test('loadGame() คืนค่า null แบบ graceful เมื่อ path เป็น directory', async () => {
+    fs.mkdirSync(TEST_DIR, { recursive: true });
+
+    const loaded = await loadGame(TEST_DIR);
+    expect(loaded).toBeNull();
+  });
+
   test('loadGame() คืนค่า null แบบ graceful เมื่อไฟล์เสียหาย (corrupted JSON)', async () => {
     fs.mkdirSync(TEST_DIR, { recursive: true });
     fs.writeFileSync(TEST_SAVE_FILE, '{ corrupted json content', 'utf-8');
+
+    const loaded = await loadGame(TEST_SAVE_FILE);
+    expect(loaded).toBeNull();
+  });
+
+  test('loadGame() คืนค่า null เมื่อ JSON ถูกต้องแต่ข้อมูลไม่ตรง schema', async () => {
+    fs.mkdirSync(TEST_DIR, { recursive: true });
+    fs.writeFileSync(TEST_SAVE_FILE, JSON.stringify({
+      version: 999,
+      highScore: 100,
+      level: 1,
+      linesCleared: 0,
+      timestamp: '2026-09-15T10:00:00.000Z',
+    }), 'utf-8');
 
     const loaded = await loadGame(TEST_SAVE_FILE);
     expect(loaded).toBeNull();
@@ -164,7 +178,7 @@ describe('Persistence - saveGame & loadGame', () => {
     engine.linesClearedTotal = 12;
 
     const loop = new GameStateLoop({
-      engine,
+      engine: engine as unknown as CoreEngine,
       onLoad: () => null,
       onSave: async (data) => {
         savedDataReceived = data;
@@ -197,7 +211,7 @@ describe('Persistence - saveGame & loadGame', () => {
     engine.linesClearedTotal = 3;
 
     const loop = new GameStateLoop({
-      engine,
+      engine: engine as unknown as CoreEngine,
       onLoad: () => null,
       onSave: async (data) => {
         savedDataReceived = data;
@@ -224,7 +238,7 @@ describe('Persistence - saveGame & loadGame', () => {
 
     // ไม่ได้ส่ง onSave แต่ส่ง saveFilePath เข้าไป
     const loop = new GameStateLoop({
-      engine,
+      engine: engine as unknown as CoreEngine,
       saveFilePath: TEST_SAVE_FILE,
     });
 
@@ -245,7 +259,7 @@ describe('Persistence - saveGame & loadGame', () => {
     engine.score = 770;
 
     const loop = new GameStateLoop({
-      engine,
+      engine: engine as unknown as CoreEngine,
       onLoad: () => null,
       onSave: async (data) => {
         await Promise.resolve();

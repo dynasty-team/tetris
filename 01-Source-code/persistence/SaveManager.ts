@@ -29,7 +29,8 @@ export async function saveGame(data: SaveData, filePath: string = DEFAULT_SAVE_F
 
     // ตรวจสอบว่า filePath เป็น directory หรือไม่
     const file = Bun.file(filePath);
-    if (filePath.endsWith('/') || filePath.endsWith('\\') || ((await file.exists()) && (await file.stat()).isDirectory())) {
+    const fileStat = await file.stat().catch(() => null);
+    if (filePath.endsWith('/') || filePath.endsWith('\\') || fileStat?.isDirectory()) {
       console.error(`Failed to save game: "${filePath}" is a directory.`);
       return;
     }
@@ -60,14 +61,12 @@ export async function saveGame(data: SaveData, filePath: string = DEFAULT_SAVE_F
 export async function loadGame(filePath: string = DEFAULT_SAVE_FILE): Promise<SaveData | null> {
   try {
     const file = Bun.file(filePath);
-    if (!(await file.exists())) {
-      return null;
-    }
-
-    if ((await file.stat()).isDirectory()) {
+    const fileStat = await file.stat().catch(() => null);
+    if (fileStat?.isDirectory()) {
       console.error(`Failed to load game: "${filePath}" is a directory.`);
       return null;
     }
+    if (!fileStat) return null;
 
     const content = await file.text();
     const parsed: unknown = JSON.parse(content);
