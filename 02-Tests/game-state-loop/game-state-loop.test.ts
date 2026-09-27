@@ -67,11 +67,11 @@ describe('GameStateLoop Orchestrator', () => {
     engine = new MockEngine();
   });
 
-  test('start() เริ่มต้น game loop และสถานะถูกต้อง', () => {
+  test('start() เริ่มต้น game loop และสถานะถูกต้อง', async () => {
     const loop = new GameStateLoop({ engine });
     expect(loop.isRunning()).toBe(false);
 
-    loop.start();
+    await loop.start();
     expect(loop.isRunning()).toBe(true);
     expect(loop.isPaused()).toBe(false);
     expect(loop.getEngine()).toBe(engine);
@@ -80,9 +80,9 @@ describe('GameStateLoop Orchestrator', () => {
     expect(loop.isRunning()).toBe(false);
   });
 
-  test('pause(), resume(), และ togglePause() สลับสถานะได้ถูกต้อง', () => {
+  test('pause(), resume(), และ togglePause() สลับสถานะได้ถูกต้อง', async () => {
     const loop = new GameStateLoop({ engine });
-    loop.start();
+    await loop.start();
 
     loop.pause();
     expect(loop.isPaused()).toBe(true);
@@ -99,9 +99,9 @@ describe('GameStateLoop Orchestrator', () => {
     loop.stop();
   });
 
-  test('handleAction() ส่งคำสั่งไปยัง CoreEngine อย่างถูกต้อง', () => {
+  test('handleAction() ส่งคำสั่งไปยัง CoreEngine อย่างถูกต้อง', async () => {
     const loop = new GameStateLoop({ engine });
-    loop.start();
+    await loop.start();
 
     loop.handleAction('MOVE_LEFT');
     expect(engine.movesCalled).toContain('moveLeft');
@@ -121,9 +121,9 @@ describe('GameStateLoop Orchestrator', () => {
     loop.stop();
   });
 
-  test('handleAction() เพิกเฉยคำสั่งเคลื่อนที่เมื่ออยู่ในสถานะ Pause', () => {
+  test('handleAction() เพิกเฉยคำสั่งเคลื่อนที่เมื่ออยู่ในสถานะ Pause', async () => {
     const loop = new GameStateLoop({ engine });
-    loop.start();
+    await loop.start();
     loop.pause();
     engine.movesCalled = [];
 
@@ -135,7 +135,7 @@ describe('GameStateLoop Orchestrator', () => {
     loop.stop();
   });
 
-  test('handleAction(QUIT) สั่งหยุด loop และ trigger save', () => {
+  test('handleAction(QUIT) สั่งหยุด loop และ trigger save', async () => {
     let saved = false;
     engine.score = 1;
     const loop = new GameStateLoop({
@@ -143,14 +143,15 @@ describe('GameStateLoop Orchestrator', () => {
       onLoad: () => null,
       onSave: () => { saved = true; },
     });
-    loop.start();
+    await loop.start();
     loop.handleAction('QUIT');
+    await loop.triggerSave();
 
     expect(loop.isRunning()).toBe(false);
     expect(saved).toBe(true);
   });
 
-  test('ไม่เรียก onSave เมื่อคะแนนไม่ทำลายสถิติเดิม', () => {
+  test('ไม่เรียก onSave เมื่อคะแนนไม่ทำลายสถิติเดิม', async () => {
     let saveCount = 0;
     const loop = new GameStateLoop({
       engine,
@@ -164,15 +165,16 @@ describe('GameStateLoop Orchestrator', () => {
       onSave: () => { saveCount++; },
     });
     engine.score = 500;
-    loop.start();
+    await loop.start();
     loop.handleAction('QUIT');
+    await loop.triggerSave();
 
     expect(saveCount).toBe(0);
   });
 
-  test('tick() คำนวณคะแนนและเลเวลเมื่อมีการเคลียร์แถว', () => {
+  test('tick() คำนวณคะแนนและเลเวลเมื่อมีการเคลียร์แถว', async () => {
     const loop = new GameStateLoop({ engine });
-    loop.start();
+    await loop.start();
 
     // จำลองผลลัพธ์ tick ที่ลบ 2 แถว
     engine.lastActionResult = {
@@ -190,7 +192,7 @@ describe('GameStateLoop Orchestrator', () => {
     loop.stop();
   });
 
-  test('tick() หยุดเกมและเรียก onSave เมื่อเกิด Game Over', () => {
+  test('tick() หยุดเกมและเรียก onSave เมื่อเกิด Game Over', async () => {
     let savedData: SaveData | null = null;
     engine.score = 500;
     engine.level = 2;
@@ -201,7 +203,7 @@ describe('GameStateLoop Orchestrator', () => {
       onLoad: () => null,
       onSave: (data) => { savedData = data; },
     });
-    loop.start();
+    await loop.start();
 
     // จำลอง Game Over จาก tick
     engine.lastActionResult = {
@@ -212,20 +214,21 @@ describe('GameStateLoop Orchestrator', () => {
     engine.gameOver = true;
 
     loop.tick();
+    await loop.triggerSave();
 
     expect(savedData).not.toBeNull();
     expect(savedData!.highScore).toBe(500);
     expect(savedData!.level).toBe(2);
   });
 
-  test('เรียก renderer callback ในแต่ละรอบ', () => {
+  test('เรียก renderer callback ในแต่ละรอบ', async () => {
     let renderCount = 0;
     const loop = new GameStateLoop({
       engine,
       renderer: () => { renderCount++; },
     });
 
-    loop.start(); // วาดเฟรมแรก 1 ครั้ง
+    await loop.start(); // วาดเฟรมแรก 1 ครั้ง
     expect(renderCount).toBe(1);
 
     loop.handleAction('MOVE_LEFT');

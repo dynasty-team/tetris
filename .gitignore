@@ -114,3 +114,6 @@ dist
 
 save-data.json
 *.save.json
+
+test-temp-persistence/
+*.save.json

@@ -9,7 +9,7 @@ export interface TerminalRawMode {
 }
 
 export interface InputReader {
-	read: () => Promise<{ done: boolean; value?: Uint8Array | string }>;
+	read: () => Promise<{ done: boolean; value?: Uint8Array }>;
 	cancel: () => Promise<void>;
 }
 
@@ -20,30 +20,8 @@ export interface InputStream {
 }
 
 export interface KeyboardInputOptions {
-	dasMs?: number;
-	arrMs?: number;
 	input?: InputStream;
 	terminal?: TerminalRawMode;
-}
-
-function createProcessInput(): InputStream {
-	const input = process.stdin;
-	return {
-		stream: () => ({
-			getReader: () => {
-				const iterator = input[Symbol.asyncIterator]();
-				return {
-					read: async () => {
-						const result = await iterator.next();
-						return { done: result.done ?? false, value: result.value };
-					},
-					cancel: async () => {
-						await iterator.return?.();
-					},
-				};
-			},
-		}),
-	};
 }
 
 // แมปปุ่มคีย์บอร์ด -> GameAction (รองรับ WASD, Space, ปุ่มลูกศร ANSI, และ Ctrl+C สำหรับออกจากเกม)
@@ -74,7 +52,7 @@ export class KeyboardInput implements InputSource{
 	private started = false;
 
 	public constructor(options: KeyboardInputOptions = {}) {
-		this.input = options.input ?? createProcessInput();
+		this.input = options.input ?? Bun.stdin;
 		this.terminal =
 			options.terminal ??
 			(typeof process !== 'undefined' && process.stdin?.isTTY ? process.stdin : undefined);
@@ -104,10 +82,6 @@ export class KeyboardInput implements InputSource{
 
 		this.reader = this.input.stream().getReader();
 		void this.readInput();
-	}
-
-	public release(): void {
-		return;
 	}
 
 	public stop(): void {
