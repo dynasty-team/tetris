@@ -67,14 +67,11 @@ export async function loadGame(filePath: string = DEFAULT_SAVE_FILE): Promise<Sa
       return null;
     }
     if (!fileStat) return null;
-
     const content = await file.text();
     const parsed: unknown = JSON.parse(content);
-
     if (validateSaveData(parsed)) {
       return parsed;
     }
-
     console.warn(`Failed to load game: data in "${filePath}" does not match SaveData schema.`);
     return null;
   } catch (error) {
@@ -83,8 +80,3 @@ export async function loadGame(filePath: string = DEFAULT_SAVE_FILE): Promise<Sa
     return null;
   }
 }
-
-
-
-
-
