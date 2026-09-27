@@ -22,7 +22,10 @@ describe('ConsoleRenderer (ConsoleRenderer.ts)', () => {
         status: 'playing',
       };
 
-      expect(() => render(snapshot)).not.toThrow();
+      expect(() => {
+        render(snapshot);
+        unmountRenderer();
+      }).not.toThrow();
 
       const output = logs.join('\n');
       expect(output).toContain('╔');
@@ -53,6 +56,7 @@ describe('ConsoleRenderer (ConsoleRenderer.ts)', () => {
       };
 
       render(snapshot);
+      unmountRenderer();
       const output = logs.join('\n');
       expect(output).toContain('=== PAUSED ===');
     } finally {
@@ -77,6 +81,7 @@ describe('ConsoleRenderer (ConsoleRenderer.ts)', () => {
       };
 
       render(snapshot);
+      unmountRenderer();
       const output = logs.join('\n');
       expect(output).toContain('=== GAME OVER ===');
     } finally {
