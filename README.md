@@ -1,13 +1,12 @@
-
-<h1 align="center">Tetris</h1>
-
 <p align="center">
+  <img src="./03-Documentation/img/325189358.jpg" width="200">
+  <br>
+  Tetris
+  <br>
   Console-based Tetris game developed with TypeScript and Bun.
 </p>
 
-<p align="center">
-  <img src="./03-Documentation/img/325189358.jpg" width="200">
-</p>
+
 
 ## 🛠️ Tech Stack
 
@@ -19,8 +18,8 @@
 
 ## Document
 
-- [Document](#document)
 - [🛠️ Tech Stack](#️-tech-stack)
+- [Document](#document)
 - [Game Overview](#game-overview)
 - [Requirements](#requirements)
 - [Game Rules](#game-rules)
