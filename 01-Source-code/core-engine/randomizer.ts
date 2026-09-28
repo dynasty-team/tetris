@@ -103,47 +103,4 @@ export class SevenBagRandomizer {
 
     return nextPiece;
   }
-
-  /**
-   * ตรวจสอบชิ้นส่วนถัดไปโดยไม่หยิบออกจากถุง (ใช้สำหรับช่องแสดง "Next Piece")
-   *
-   * @returns ชิ้นส่วน TetrominoType ที่จะถูกหยิบเป็นลำดับถัดไป
-   */
-  public peek(): TetrominoType {
-    if (this.bag.length === 0) {
-      this.refillBag();
-    }
-    return this.bag[0] ?? 'I';
-  }
-
-  /**
-   * ดูคิวชิ้นส่วนล่วงหน้าจำนวน count ชิ้น โดยไม่กระทบกับคิวปัจจุบัน
-   *
-   * @param count จำนวนชิ้นที่ต้องการดู
-   * @returns Array ของ TetrominoType ล่วงหน้า
-   */
-  public peekQueue(count: number): TetrominoType[] {
-    while (this.bag.length < count) {
-      this.refillBag();
-    }
-    return this.bag.slice(0, count);
-  }
-
-  /**
-   * จำนวนชิ้นส่วนที่เหลืออยู่ในถุงปัจจุบัน
-   */
-  public get remainingInBag(): number {
-    return this.bag.length;
-  }
-
-  /**
-   * รีเซ็ตถุงสุ่มใหม่ ล้างชิ้นส่วนเดิมทิ้งแล้วสับถุงใหม่ 7 ชิ้น
-   */
-  public reset(): void {
-    this.bag = [];
-    this.refillBag();
-  }
 }
-
-/** Alias เพื่อความสะดวกในการเรียกใช้ */
-export const BagRandomizer = SevenBagRandomizer;
