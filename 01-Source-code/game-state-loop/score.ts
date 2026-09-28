@@ -1,5 +1,3 @@
-import type { ActionResult } from '../shared/types';
-
 export function calculateScore(linesCleared: number, level: number): number {
   // ดัก level ขั้นต่ำ 1 และปัดเศษ
   const safeLevel = !Number.isFinite(level) || level < 1 ? 1 : Math.floor(level);
