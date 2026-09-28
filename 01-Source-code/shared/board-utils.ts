@@ -27,6 +27,8 @@ export function setCell(board: Board, x: number, y: number, value: CellValue): B
   );
 }
 
+
+
 /** เช็คว่าตำแหน่ง (x, y) อยู่ในขอบ board ไหม */
 export function isInBounds(x: number, y: number): boolean {
   return x >= 0 && x < BOARD_WIDTH && y >= 0 && y < BOARD_HEIGHT;

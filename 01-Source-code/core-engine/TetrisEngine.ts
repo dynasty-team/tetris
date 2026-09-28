@@ -114,13 +114,6 @@ export class TetrisEngine implements CoreEngine, MovementState {
   }
 
   /**
-   * ล็อก active piece ลงบนกระดาน และเรียก spawnNextPiece
-   */
-  public lockPiece(): ActionResult {
-    return performLock(this);
-  }
-
-  /**
    * สุ่ม/ดึง piece ชิ้นถัดไปเข้ามาเป็น active piece (C5)
    */
   public spawnNextPiece(): ActionResult {

@@ -1,5 +1,6 @@
 import React from "react";
 import { Box, Text, useWindowSize, render as inkRender } from "ink";
+import { isInBounds } from "../shared/board-utils";
 
 import type {
     ActivePiece,
@@ -90,15 +91,6 @@ const PIECE_SHAPES: Record<TetrominoType, number[][]> = {
 // Board Logic
 // =============================
 
-// เช็คตำแหน่งว่าอยู่ใน Board หรือไม่
-function isInBounds(x: number, y: number): boolean {
-    return (
-        x >= 0 &&
-        x < BOARD_WIDTH &&
-        y >= 0 &&
-        y < BOARD_HEIGHT
-    );
-}
 
 
 // Copy Board เพื่อไม่แก้ Board จริง
