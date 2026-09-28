@@ -302,14 +302,3 @@ export class TetrisEngine implements CoreEngine, MovementState {
   }
 
 }
-
-/**
- * ฟังก์ชัน helper spawnNextPiece แบบ standalone สำหรับกรณีเรียกใช้งานแบบฟังก์ชันเดี่ยว
- *
- * @param engine TetrisEngine instance (หากไม่ส่งเข้ามา จะสร้าง engine ใหม่ขึ้นมารองรับ)
- * @returns ActionResult
- */
-export function spawnNextPiece(engine?: TetrisEngine): ActionResult {
-  const targetEngine = engine ?? new TetrisEngine();
-  return targetEngine.spawnNextPiece();
-}

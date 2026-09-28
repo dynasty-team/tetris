@@ -25,7 +25,6 @@ export interface MovementState {
   gameOver?: boolean;
   nextPiece?: TetrominoType | null;
   linesClearedTotal?: number;
-  lockPiece?: () => ActionResult | void;
   spawnNextPiece?: () => ActionResult;
   lastClearedLines?: number[];
 }
@@ -335,26 +334,15 @@ export function softDrop<T extends MovementState = MovementState>(state: T): Mov
   // ตรวจสอบสถานะการแตะพื้นหลังการตกลงมา 1 ช่อง
   let lockResult: ActionResult | null = null;
   if (isPieceOnGround(state.board, state.activePiece)) {
-    if (!state.isLocking) {
-      startLockTimer(state);
-    } else {
-      const nextResets = (state.lockResets ?? 0) + 1;
-      state.lockResets = nextResets;
-      if (nextResets >= MAX_LOCK_RESETS) {
-        lockResult = performLock(state);
-        state.onLock?.(lockResult);
-      } else {
-        restartLockTimer(state);
-      }
-    }
+    startLockTimer(state);
   } else {
     cancelLockTimer(state);
   }
 
   return {
     success: true,
-    linesCleared: lockResult ? lockResult.linesCleared : [],
-    gameOver: lockResult ? lockResult.gameOver : (state.gameOver ?? false),
+    linesCleared: [],
+    gameOver: state.gameOver ?? false,
     state,
   };
 }

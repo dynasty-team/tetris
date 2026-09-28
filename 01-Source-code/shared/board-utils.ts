@@ -16,14 +16,6 @@ export function createEmptyBoard(): Board {
 }
 
 /**
- * อ่านค่า cell อย่างปลอดภัย — นอกขอบ board ถือว่า 0 (ว่าง)
- * ปกติควรเช็ค bound ก่อนเรียกอยู่แล้ว แต่ฟังก์ชันนี้กันพลาดอีกชั้น
- */
-export function getCell(board: Board, x: number, y: number): CellValue {
-  return board[y]?.[x] ?? 0;
-}
-
-/**
  * คืน board ใหม่ที่เปลี่ยนค่า cell ตำแหน่ง (x, y) เป็น value
  * เป็น pure function — ไม่ mutate board เดิม (ตาม FP requirement)
  */
