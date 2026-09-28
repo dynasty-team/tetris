@@ -1,13 +1,24 @@
 // 02-Tests/core-engine/spawn.test.ts
 import { describe, expect, test } from 'bun:test';
-import type { Board, TetrominoType } from '../../01-Source-code/shared/types';
+import type { TetrominoType, ActionResult } from '../../01-Source-code/shared/types';
 import { createEmptyBoard, setCell } from '../../01-Source-code/shared/board-utils';
 import {
   TetrisEngine,
-  spawnNextPiece,
   DEFAULT_SPAWN_POSITION,
 } from '../../01-Source-code/core-engine/TetrisEngine';
 import { SevenBagRandomizer } from '../../01-Source-code/core-engine/randomizer';
+
+/**
+ * ฟังก์ชัน helper spawnNextPiece แบบ standalone สำหรับกรณีเรียกใช้งานแบบฟังก์ชันเดี่ยว
+ *
+ * @param engine TetrisEngine instance (หากไม่ส่งเข้ามา จะสร้าง engine ใหม่ขึ้นมารองรับ)
+ * @returns ActionResult
+ */
+function spawnNextPiece(engine?: TetrisEngine): ActionResult {
+  const targetEngine = engine ?? new TetrisEngine();
+  return targetEngine.spawnNextPiece();
+}
+
 
 describe('spawnNextPiece() - ระบบสร้างชิ้นส่วนใหม่และตรวจจับ Game Over', () => {
   describe('กรณีเกิดสำเร็จบนกระดานว่าง (Normal Spawning)', () => {

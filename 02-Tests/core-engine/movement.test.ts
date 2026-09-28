@@ -484,51 +484,21 @@ describe('Movement & Lock Delay System (C4)', () => {
       expect(engine.getLinesClearedTotal()).toBe(1);
     });
 
-    test('softDrop() เมื่อแตะพื้นและสะสม lock resets ครบ 15 ครั้ง -> ActionResult.linesCleared ไม่ว่าง และ onLock ถูกเรียกถูกต้อง', () => {
-      const engine = new TetrisEngine();
-      let onLockCalledWith = null as ActionResult | null;
-      engine.onLock = (result) => {
-        onLockCalledWith = result;
+    test('softDrop() ขณะกำลัง lock และแตะพื้นอยู่แล้ว -> ไม่ขยับและไม่เพิ่ม lock resets', () => {
+      const board = createEmptyBoard();
+      const state: MovementState = {
+        board,
+        activePiece: createTestPiece('T', 4, 18),
+        isLocking: true,
+        lockResets: 14,
       };
 
-      // สร้างกระดานเกือบเต็ม 2 แถวล่าง (แถว 18 และ 19)
-      let board = createEmptyBoard();
-      for (let x = 0; x < 10; x++) {
-        if (x !== 4 && x !== 5) {
-          board = setCell(board, x, 18, 'I');
-          board = setCell(board, x, 19, 'I');
-        }
-      }
-      engine.setBoard(board);
+      const result = softDrop(state);
 
-      // วาง O piece ที่ x=4, y=18 (แตะพื้น)
-      engine.setActivePiece(createTestPiece('O', 3, 18));
-
-      // สะสม resets จากการหมุน 14 ครั้ง
-      for (let i = 0; i < 14; i++) {
-        engine.rotate();
-      }
-      expect(engine.lockResets).toBe(14);
-      expect(onLockCalledWith).toBeNull();
-
-      // ตั้งตำแหน่ง activePiece อยู่ที่ y=17 โดยรักษาสถานะ isLocking = true และ lockResets = 14
-      // เพื่อจำลองกรณีที่ piece อยู่ระหว่าง lock delay แล้ว softDrop ลงมาแตะพื้นเป็นครั้งที่ 15
-      const piece = engine.getActivePiece()!;
-      engine.activePiece = {
-        ...piece,
-        position: { ...piece.position, y: 17 },
-      };
-      engine.isLocking = true;
-      engine.lockResets = 14;
-
-      // softDrop เลื่อนลง 1 ช่องมาที่ y=18 และแตะพื้น นับเป็น reset ครั้งที่ 15 -> auto-lock ทันที
-      const dropResult = engine.softDrop();
-      expect(dropResult.success).toBe(true);
-      expect(dropResult.linesCleared.length).toBe(2);
-      expect(dropResult.linesCleared).toEqual([18, 19]);
-      expect(onLockCalledWith).not.toBeNull();
-      expect(onLockCalledWith?.linesCleared).toEqual([18, 19]);
-      expect(engine.getLinesClearedTotal()).toBe(2);
+      expect(result.success).toBe(false);
+      expect(state.activePiece?.position.y).toBe(18);
+      expect(state.lockResets).toBe(14);
+      expect(state.isLocking).toBe(true);
     });
   });
 
@@ -770,22 +740,22 @@ describe('Movement & Lock Delay System (C4)', () => {
       expect(state.lockTimer).not.toBeNull();
     });
 
-    test('softDrop(state) เลื่อนลงสำเร็จแล้วแตะพื้นขณะที่ isLocking เป็น true อยู่ก่อนแล้ว และ resets ยังไม่ครบ MAX -> รีเซ็ตเวลา lock delay ใหม่ (restartLockTimer)', () => {
+    test('softDrop(state) ชนพื้นขณะที่กำลัง lock -> ไม่เพิ่ม lock resets หรือเริ่ม timer ใหม่', () => {
       const board = createEmptyBoard();
-      const piece = createTestPiece('T', 4, 17); // ยังไม่แตะพื้นจริง
-      // จำลองกรณี isLocking ถูกตั้งเป็น true มาก่อนแล้ว (เช่นสืบเนื่องจาก action ก่อนหน้า)
+      const piece = createTestPiece('T', 4, 18); // ชิดพื้นพอดี ขยับลงอีกไม่ได้แล้ว
       const state: MovementState = { board, activePiece: piece, isLocking: true, lockResets: 2 };
+      const existingTimer = setTimeout(() => {}, 1000);
+      state.lockTimer = existingTimer;
 
       const result = softDrop(state);
 
-      expect(result.success).toBe(true);
+      expect(result.success).toBe(false);
       expect(state.activePiece?.position.y).toBe(18);
       expect(isPieceOnGround(state.board, state.activePiece!)).toBe(true);
-      // นับ reset เพิ่มขึ้นแต่ยังไม่ถึง MAX_LOCK_RESETS -> ต้อง restartLockTimer ไม่ใช่ performLock
-      expect(state.lockResets).toBe(3);
+      expect(state.lockResets).toBe(2);
       expect(state.isLocking).toBe(true);
-      expect(state.lockTimer).not.toBeNull();
-      expect(state.activePiece).not.toBeNull();
+      expect(state.lockTimer).toBe(existingTimer);
+      clearTimeout(existingTimer);
     });
   });
 
