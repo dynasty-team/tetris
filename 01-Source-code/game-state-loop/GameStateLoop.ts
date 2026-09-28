@@ -22,6 +22,8 @@ export interface GameStateLoopOptions {
   engine: CoreEngine;
   /** ฟังก์ชันสำหรับวาดการแสดงผล (เช่น ConsoleRenderer.render) */
   renderer?: (snapshot: RenderSnapshot) => void;
+  /** Callback สำหรับปิดทรัพยากรเมื่อหยุด loop */
+  onStop?: () => void;
   /** โมดูลรับอินพุตจากคีย์บอร์ด */
   input?: InputSource;
   /** Callback สำหรับบันทึกคะแนน (Persistence) — หากไม่ระบุจะใช้ saveGame เป็นค่าเริ่มต้น */
@@ -40,6 +42,7 @@ export interface GameStateLoopOptions {
 export class GameStateLoop {
   private readonly engine: CoreEngine;
   private readonly renderer?: (snapshot: RenderSnapshot) => void;
+  private readonly onStop?: () => void;
   private readonly input?: InputSource;
   private readonly onSave?: (data: SaveData) => Promise<void> | void;
   private readonly onLoad?: () => SaveData | null | Promise<SaveData | null>;
@@ -59,6 +62,7 @@ export class GameStateLoop {
   constructor(options: GameStateLoopOptions) {
     this.engine = options.engine;
     this.renderer = options.renderer;
+    this.onStop = options.onStop;
     this.input = options.input;
     this.saveFilePath = options.saveFilePath;
     this.onSave = options.onSave ?? ((data: SaveData) => saveGame(data, this.saveFilePath));
@@ -142,6 +146,7 @@ export class GameStateLoop {
     };
     lockAwareEngine.onLock = undefined;
 
+    this.onStop?.();
     this.triggerSave();
   }
 

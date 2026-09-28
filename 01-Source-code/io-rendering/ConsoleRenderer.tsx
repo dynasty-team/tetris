@@ -536,7 +536,15 @@ function App({
     }
 
     return (
-        <GameUI snapshot={snapshot} />
+        <Box
+            width={columns}
+            height={rows}
+            flexDirection="column"
+            justifyContent="center"
+            alignItems="center"
+        >
+            <GameUI snapshot={snapshot} />
+        </Box>
     );
 }
 
@@ -557,7 +565,8 @@ export function render(snapshot: RenderSnapshot): void {
     if (inkInstance === null) {
 
         inkInstance = inkRender(
-            <App snapshot={snapshot} />
+            <App snapshot={snapshot} />,
+            { alternateScreen: true }
         );
 
         return;
@@ -581,9 +590,8 @@ export function render(snapshot: RenderSnapshot): void {
 export function unmountRenderer(): void {
 
     if (inkInstance !== null) {
-
+        inkInstance.clear();
         inkInstance.unmount();
-
         inkInstance = null;
     }
 }

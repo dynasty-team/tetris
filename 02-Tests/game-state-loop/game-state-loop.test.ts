@@ -137,11 +137,13 @@ describe('GameStateLoop Orchestrator', () => {
 
   test('handleAction(QUIT) สั่งหยุด loop และ trigger save', async () => {
     let saved = false;
+    let stopCount = 0;
     engine.score = 1;
     const loop = new GameStateLoop({
       engine,
       onLoad: () => null,
       onSave: () => { saved = true; },
+      onStop: () => { stopCount++; },
     });
     await loop.start();
     loop.handleAction('QUIT');
@@ -149,6 +151,9 @@ describe('GameStateLoop Orchestrator', () => {
 
     expect(loop.isRunning()).toBe(false);
     expect(saved).toBe(true);
+    expect(stopCount).toBe(1);
+    loop.stop();
+    expect(stopCount).toBe(1);
   });
 
   test('ไม่เรียก onSave เมื่อคะแนนไม่ทำลายสถิติเดิม', async () => {

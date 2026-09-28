@@ -16,7 +16,7 @@ const BOARD_PADDING_WIDTH = 2;
 export const BOARD_PANEL_WIDTH =
 	BOARD_WIDTH * CELL_GLYPH_WIDTH + BOARD_BORDER_WIDTH + BOARD_PADDING_WIDTH;
 
-// BoardView: เส้นขอบบน + ล่าง อย่างละ 1 แถว, ไม่มี paddingY
+// BoardView: one terminal row per board row plus top/bottom borders; no vertical padding
 const BOARD_BORDER_HEIGHT = 2;
 export const BOARD_PANEL_HEIGHT = BOARD_HEIGHT + BOARD_BORDER_HEIGHT;
 
