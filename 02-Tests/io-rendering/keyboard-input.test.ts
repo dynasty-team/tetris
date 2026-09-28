@@ -94,9 +94,23 @@ describe('KeyboardInput (KeyboardInput.ts)', () => {
     keyboard.stop();
   });
 
-  test('stop() ปิดการทำงานและยกเลิก reader ได้อย่างปลอดภัย', () => {
-    const mockInput = new MockInputStream([]);
+ test('stop() ปิดการทำงานและยกเลิก reader ได้อย่างปลอดภัย', async () => {
+    const actions: GameAction[] = [];
+    const mockInput = new MockInputStream(['a', 'd']);
     const keyboard = new KeyboardInput({ input: mockInput });
 
+    keyboard.start((action) => {
+      actions.push(action);
+    });
+
+    keyboard.stop();
+
+    // หลังจาก stop() แล้ว ไม่ควรมี action เพิ่มขึ้นอีก
+    const countAfterStop = actions.length;
+    await new Promise((r) => setTimeout(r, 30));
+    expect(actions.length).toBe(countAfterStop);
+
+    // stop() ซ้ำต้องไม่ throw error
+    expect(() => keyboard.stop()).not.toThrow();
   });
 });
