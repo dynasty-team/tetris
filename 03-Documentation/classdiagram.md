@@ -51,12 +51,8 @@ mermaid
     class SevenBagRandomizer {
         -bag : TetrominoType[]
         -shuffleFn : Function
-        +remainingInBag : number
 
         +next() : TetrominoType
-        +peek() : TetrominoType
-        +peekQueue(count : number) : TetrominoType[]
-        +reset() : void
     }
 
     class ActivePiece {
