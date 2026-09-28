@@ -1,6 +1,5 @@
 import type { GameAction, InputSource } from '../shared/types';
 
-export type RepeatableAction = 'MOVE_LEFT' | 'MOVE_RIGHT' | 'SOFT_DROP';
 export type ActionHandler = (action: GameAction) => void;
 
 export interface TerminalRawMode {

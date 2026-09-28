@@ -12,6 +12,10 @@ class MockInputStream implements InputStream {
     this.chunks = inputs.map((s) => encoder.encode(s));
   }
 
+  public get isCancelled(): boolean {
+    return this.cancelled;
+  }
+
   public stream() {
     return {
       getReader: () => ({
@@ -96,7 +100,18 @@ describe('KeyboardInput (KeyboardInput.ts)', () => {
 
   test('stop() ปิดการทำงานและยกเลิก reader ได้อย่างปลอดภัย', () => {
     const mockInput = new MockInputStream([]);
-    const keyboard = new KeyboardInput({ input: mockInput });
+    const rawModeCalls: boolean[] = [];
+    const mockTerminal: TerminalRawMode = {
+      isTTY: true,
+      setRawMode: (mode) => rawModeCalls.push(mode),
+    };
+    const keyboard = new KeyboardInput({ input: mockInput, terminal: mockTerminal });
 
+    keyboard.start(() => {});
+    keyboard.stop();
+    keyboard.stop();
+
+    expect(mockInput.isCancelled).toBe(true);
+    expect(rawModeCalls).toEqual([true, false]);
   });
 });
