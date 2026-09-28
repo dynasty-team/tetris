@@ -15,6 +15,20 @@ export function createEmptyBoard(): Board {
   );
 }
 
+/**
+ * คืน board ใหม่ที่เปลี่ยนค่า cell ตำแหน่ง (x, y) เป็น value
+ * เป็น pure function — ไม่ mutate board เดิม (ตาม FP requirement)
+ */
+export function setCell(board: Board, x: number, y: number, value: CellValue): Board {
+  return board.map((row, rowIndex) =>
+    rowIndex === y
+      ? row.map((cell, colIndex) => (colIndex === x ? value : cell))
+      : row,
+  );
+}
+
+
+
 /** เช็คว่าตำแหน่ง (x, y) อยู่ในขอบ board ไหม */
 export function isInBounds(x: number, y: number): boolean {
   return x >= 0 && x < BOARD_WIDTH && y >= 0 && y < BOARD_HEIGHT;
