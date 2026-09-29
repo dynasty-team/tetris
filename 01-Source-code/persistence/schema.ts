@@ -19,7 +19,11 @@ export function validateSaveData(data: unknown): data is SaveData {
     }
 
     // ตรวจสอบประเภทข้อมูลของแต่ละ field
-    if (typeof saveData.highScore !== "number") {
+    if (
+        typeof saveData.highScore !== "number" ||
+        !Number.isSafeInteger(saveData.highScore) ||
+        saveData.highScore < 0
+    ) {
         return false;
     }
 

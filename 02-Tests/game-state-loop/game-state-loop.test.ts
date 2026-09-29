@@ -1,6 +1,7 @@
 // 02-Tests/game-state-loop/game-state-loop.test.ts
 import { describe, expect, test, beforeEach, afterEach } from 'bun:test';
 import { GameStateLoop } from '../../01-Source-code/game-state-loop/GameStateLoop';
+import { CURRENT_SAVE_VERSION } from '../../01-Source-code/persistence/schema';
 import type { CoreEngine, ActionResult, RenderSnapshot, GameAction, SaveData } from '../../01-Source-code/shared/types';
 import { mockRenderSnapshot } from '../../01-Source-code/shared/mock-engine';
 
@@ -86,6 +87,23 @@ describe('GameStateLoop Orchestrator', () => {
 
     loop.stop();
     expect(loop.isRunning()).toBe(false);
+  });
+
+  test('ไม่ใช้ highScore ติดลบจาก onLoad เป็นสถิติเดิม', async () => {
+    let saveCount = 0;
+    engine.score = 0;
+    const loop = new GameStateLoop({
+      engine,
+      onLoad: () => ({ version: CURRENT_SAVE_VERSION, highScore: -100 }),
+      onSave: () => { saveCount++; },
+    });
+
+    await loop.start();
+    expect(engine.highScore).toBe(0);
+
+    await loop.triggerSave();
+    expect(saveCount).toBe(0);
+    loop.stop();
   });
 
   test('pause(), resume(), และ togglePause() สลับสถานะได้ถูกต้อง', async () => {

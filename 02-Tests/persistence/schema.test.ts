@@ -85,6 +85,12 @@ describe('validateSaveData() - Schema Validation', () => {
     }
   });
 
+  test('ปฏิเสธ highScore ที่ติดลบ ไม่เป็นจำนวนเต็ม หรือไม่ finite', () => {
+    for (const highScore of [-1, 1.5, Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY]) {
+      expect(validateSaveData({ ...validSaveData, highScore })).toBe(false);
+    }
+  });
+
   // 5. object ที่ถูกต้องครบทุกอย่าง -> true (happy path)
   describe('5. object ที่ถูกต้องครบทุกอย่าง -> true (happy path)', () => {
     test('validateSaveData(validSaveData) -> true', () => {
