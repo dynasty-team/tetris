@@ -1,5 +1,5 @@
 // 02-Tests/io-rendering/keyboard-input.test.ts
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, spyOn, test } from 'bun:test';
 import { KeyboardInput, type InputStream, type TerminalRawMode } from '../../01-Source-code/io-rendering/KeyboardInput';
 import type { GameAction } from '../../01-Source-code/shared/types';
 
@@ -68,6 +68,31 @@ describe('KeyboardInput (KeyboardInput.ts)', () => {
     keyboard.stop();
   });
 
+  
+  test('ไม่กลืนปุ่ม q ที่ตามหลัง ESC แยกคนละ chunk', async () => {
+    const actions: GameAction[] = [];
+    const mockInput = new MockInputStream(['\u001b', 'q']);
+    const mockTerminal: TerminalRawMode = {
+      isTTY: true,
+      setRawMode: () => {},
+    };
+
+    const keyboard = new KeyboardInput({
+      input: mockInput,
+      terminal: mockTerminal,
+    });
+
+    keyboard.start((action) => {
+      actions.push(action);
+    });
+
+    await new Promise((r) => setTimeout(r, 30));
+
+    expect(actions).toEqual(['QUIT']);
+
+    keyboard.stop();
+  });
+
   test('แปลง ANSI Escape Sequences ของปุ่มลูกศรได้ถูกต้อง', async () => {
     const actions: GameAction[] = [];
     // Up, Down, Left, Right arrows
@@ -113,5 +138,28 @@ describe('KeyboardInput (KeyboardInput.ts)', () => {
 
     expect(mockInput.isCancelled).toBe(true);
     expect(rawModeCalls).toEqual([true, false]);
+  });
+
+  test('SIGINT หยุด keyboard และออกด้วยรหัส 130', () => {
+    const mockInput = new MockInputStream([]);
+    const rawModeCalls: boolean[] = [];
+    const mockTerminal: TerminalRawMode = {
+      isTTY: true,
+      setRawMode: (mode) => rawModeCalls.push(mode),
+    };
+    const keyboard = new KeyboardInput({ input: mockInput, terminal: mockTerminal });
+    const exitSpy = spyOn(process, 'exit').mockImplementation(() => undefined as never);
+
+    try {
+      keyboard.start(() => {});
+      process.emit('SIGINT');
+
+      expect(exitSpy).toHaveBeenCalledWith(130);
+      expect(mockInput.isCancelled).toBe(true);
+      expect(rawModeCalls).toEqual([true, false]);
+    } finally {
+      keyboard.stop();
+      exitSpy.mockRestore();
+    }
   });
 });

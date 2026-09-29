@@ -162,6 +162,7 @@ export class KeyboardInput implements InputSource{
 		const firstCharacter = this.escapeSequence[0];
 		if (firstCharacter === '\u001b') {
 			if (this.escapeSequence.length === 1) return undefined;
+			if (!this.escapeSequence.startsWith('\u001b[')) return { consumed: 1 };
 			if (this.escapeSequence.startsWith('\u001b[') && this.escapeSequence.length < 3) return undefined;
 
 			const sequence = this.escapeSequence.slice(0, 3);
