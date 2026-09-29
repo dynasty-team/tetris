@@ -8,7 +8,7 @@ import type {
   InputSource,
 } from '../shared/types';
 
-import { saveGame, loadGame } from '../persistence';
+import { CURRENT_SAVE_VERSION, saveGame, loadGame } from '../persistence';
 import { calculateScore } from './score';
 import { calculateLevel, getSpeedForLevel } from './level';
 
@@ -370,7 +370,7 @@ export class GameStateLoop {
       if (currentScore <= previousHighScore) return;
 
       const saveData: SaveData = {
-        version: 1,
+        version: CURRENT_SAVE_VERSION,
         highScore: currentScore,
         level: this.engine.getLevel(),
         linesCleared: this.engine.getLinesClearedTotal(),

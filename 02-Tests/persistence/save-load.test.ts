@@ -29,7 +29,7 @@ class TestEngine implements CoreEngine {
   public getActivePiece() { return mockRenderSnapshot.activePiece; }
   public setLockCallback(callback: ((result: ActionResult) => void) | null): void { this.lockCallback = callback; }
   public pauseLockTimer(): boolean { return false; }
-  public resumeLockTimer(): void {}
+  public resumeLockTimer(): void { }
   public getRenderSnapshot(): RenderSnapshot { return { ...mockRenderSnapshot, score: this.score, level: this.level, highScore: this.highScore, linesClearedTotal: this.linesClearedTotal }; }
   public addScore(points: number): void { this.score += points; }
   public setLevel(level: number): void { this.level = level; }
@@ -212,11 +212,12 @@ describe('Persistence - saveGame & loadGame', () => {
     expect(savedDataReceived?.highScore).toBe(900);
     expect(savedDataReceived?.level).toBe(4);
     expect(savedDataReceived?.linesCleared).toBe(12);
+    expect(savedDataReceived?.version).toBe(CURRENT_SAVE_VERSION);
 
     // ตรวจสอบไฟล์ที่เขียนลง disk
     expect(fs.existsSync(TEST_SAVE_FILE)).toBe(true);
     const diskData = await loadGame(TEST_SAVE_FILE);
-    expect(diskData?.highScore).toBe(900);
+    expect(diskData).toEqual(savedDataReceived);
   });
 
   test('เชื่อมต่อเข้ากับ GameStateLoop: เรียก onSave เมื่อผู้เล่นกด QUIT', async () => {
