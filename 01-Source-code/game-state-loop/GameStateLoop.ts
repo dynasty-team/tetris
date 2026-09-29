@@ -8,7 +8,7 @@ import type {
   InputSource,
 } from '../shared/types';
 
-import { saveGame, loadGame } from '../persistence';
+import { CURRENT_SAVE_VERSION, saveGame, loadGame, validateSaveData } from '../persistence';
 import { calculateScore } from './score';
 import { calculateLevel, getSpeedForLevel } from './level';
 
@@ -370,11 +370,8 @@ export class GameStateLoop {
       if (currentScore <= previousHighScore) return;
 
       const saveData: SaveData = {
-        version: 1,
+        version: CURRENT_SAVE_VERSION,
         highScore: currentScore,
-        level: this.engine.getLevel(),
-        linesCleared: this.engine.getLinesClearedTotal(),
-        timestamp: new Date().toISOString(),
       };
 
       await this.onSave(saveData);
@@ -388,11 +385,11 @@ export class GameStateLoop {
   /**
    * โหลดข้อมูลเกมที่เคยบันทึกไว้
    */
-  public loadGame(): Promise<SaveData | null> {
-    if (this.onLoad) {
-      return Promise.resolve(this.onLoad());
-    }
-    return loadGame(this.saveFilePath);
+  public async loadGame(): Promise<SaveData | null> {
+    const data = this.onLoad
+      ? await this.onLoad()
+      : await loadGame(this.saveFilePath);
+    return validateSaveData(data) ? data : null;
   }
 
 

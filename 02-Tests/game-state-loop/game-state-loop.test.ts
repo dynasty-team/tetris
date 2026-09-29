@@ -1,6 +1,7 @@
 // 02-Tests/game-state-loop/game-state-loop.test.ts
 import { describe, expect, test, beforeEach, afterEach } from 'bun:test';
 import { GameStateLoop } from '../../01-Source-code/game-state-loop/GameStateLoop';
+import { CURRENT_SAVE_VERSION } from '../../01-Source-code/persistence/schema';
 import type { CoreEngine, ActionResult, RenderSnapshot, GameAction, SaveData } from '../../01-Source-code/shared/types';
 import { mockRenderSnapshot } from '../../01-Source-code/shared/mock-engine';
 
@@ -88,6 +89,23 @@ describe('GameStateLoop Orchestrator', () => {
     expect(loop.isRunning()).toBe(false);
   });
 
+  test('ไม่ใช้ highScore ติดลบจาก onLoad เป็นสถิติเดิม', async () => {
+    let saveCount = 0;
+    engine.score = 0;
+    const loop = new GameStateLoop({
+      engine,
+      onLoad: () => ({ version: CURRENT_SAVE_VERSION, highScore: -100 }),
+      onSave: () => { saveCount++; },
+    });
+
+    await loop.start();
+    expect(engine.highScore).toBe(0);
+
+    await loop.triggerSave();
+    expect(saveCount).toBe(0);
+    loop.stop();
+  });
+
   test('pause(), resume(), และ togglePause() สลับสถานะได้ถูกต้อง', async () => {
     const loop = new GameStateLoop({ engine });
     await loop.start();
@@ -171,9 +189,6 @@ describe('GameStateLoop Orchestrator', () => {
       onLoad: () => ({
         version: 1,
         highScore: 1000,
-        level: 5,
-        linesCleared: 20,
-        timestamp: '2026-09-15T10:00:00.000Z',
       }),
       onSave: () => { saveCount++; },
     });
@@ -208,8 +223,6 @@ describe('GameStateLoop Orchestrator', () => {
   test('tick() หยุดเกมและเรียก onSave เมื่อเกิด Game Over', async () => {
     let savedData: SaveData | null = null;
     engine.score = 500;
-    engine.level = 2;
-    engine.linesClearedTotal = 10;
 
     const loop = new GameStateLoop({
       engine,
@@ -231,7 +244,6 @@ describe('GameStateLoop Orchestrator', () => {
 
     expect(savedData).not.toBeNull();
     expect(savedData!.highScore).toBe(500);
-    expect(savedData!.level).toBe(2);
   });
 
   test('จัดการผลลัพธ์เมื่อชิ้นส่วนถูกล็อก', async () => {
