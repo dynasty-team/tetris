@@ -153,22 +153,65 @@ describe('SRS Wall-Kick System', () => {
     expect(snapshot.activePiece.position.y).toBe(17);
   });
 
-  test('หมุนในสถานะ y < 0 (buffer zone) ที่ต้อง kick แนวตั้งด้วย ต้องผ่านโดยไม่ชนเพดาน', () => {
-    // วางบล็อกกีดขวางที่ (5, 0) เพื่อบังคับให้ offset [0,0] และ [-1,0] ชนกัน
-    // offset ที่ใช้ได้จริงคือ [-1,-1] ซึ่งพา piece ลอยขึ้นไปอยู่ที่ y=-2 (ยังอยู่เหนือกระดาน)
-    // ต้องไม่ถูกนับเป็นการชนเพดาน เพราะ checkCollision อนุญาต buffer zone (y < 0) เสมอ
+  test('ไม่อนุญาตให้ Wall Kick ดัน piece ขึ้นเหนือขอบบน (y < 0) ตามข้อกำหนด Piece ต้องไม่สามารถเคลื่อนออกนอก board ได้', () => {
+    // วางบล็อกกีดขวางที่ตำแหน่งที่ offset [0, 0] และ [-1, 0] จะชน
+    // สำหรับ T ที่ spawn (3, 0) หมุน 0 -> 1:
+    // shape 1 มีบล็อกที่ (x+1, y+0), (x+1, y+1), (x+2, y+1), (x+1, y+2)
+    // หากมีบล็อกขวางที่ (4, 0) และ (3, 0) จะทำให้ offset 1 [0,0] และ offset 2 [-1,0] ชน
+    // offset 3 คือ [-1, -1] ซึ่งจะดัน piece ไปที่ y = -1 (หลุดขอบบนแถว 0)
+    // ระบบต้อง REJECT offset 3 นี้ ไม่ยอมให้ลอยขึ้นไป y < 0
+    let board = createEmptyBoard();
+    board = setCell(board, 4, 0, 'Z');
+    board = setCell(board, 3, 0, 'Z');
+
     const engine = new TetrisEngine();
-    const board = setCell(createEmptyBoard(), 5, 0, 'Z');
     engine.setBoard(board);
-    engine.setActivePiece(createTestPiece('T', 4, -1, 0));
+    engine.setActivePiece(createTestPiece('T', 3, 0, 0));
 
     const result = engine.rotate();
 
+    // offset 4 คือ [0, 2] -> position (3, 2) ซึ่งอยู่ในกระดานทั้งหมด (y=2..4 >= 0)
+    // จึงสามารถ kick ลงล่างแทนได้สำเร็จ โดย activePiece.position.y ต้อง >= 0 เสมอ
     expect(result.success).toBe(true);
     const snapshot = engine.getRenderSnapshot();
     expect(snapshot.activePiece.rotation).toBe(1);
-    expect(snapshot.activePiece.position.x).toBe(3);
-    expect(snapshot.activePiece.position.y).toBe(-2);
+    expect(snapshot.activePiece.position.y).toBeGreaterThanOrEqual(0);
+    // ยืนยันว่าไม่มี cell ใดอยู่เหนือแถว 0
+    for (let r = 0; r < snapshot.activePiece.shape.length; r++) {
+      for (let c = 0; c < snapshot.activePiece.shape[r]!.length; c++) {
+        if (snapshot.activePiece.shape[r]![c]) {
+          expect(snapshot.activePiece.position.y + r).toBeGreaterThanOrEqual(0);
+        }
+      }
+    }
+  });
+
+  test('การหมุนที่ขอบบน หากทุก offset ภายในกระดานชนหมด และ offset ที่เหลือจะหลุดขอบบน -> หมุนไม่สำเร็จ (success: false)', () => {
+    // บล็อกทุกช่องรอบข้าง เปิดเฉพาะที่เดิมของ T rot 0 ที่ (3, 0)
+    let board = createEmptyBoard();
+    for (let y = 0; y <= 5; y++) {
+      for (let x = 0; x < 10; x++) {
+        board = setCell(board, x, y, 'Z');
+      }
+    }
+    // เปิดเฉพาะช่องให้ T (rot 0) วางได้ที่ (3, 0): (4, 0), (3, 1), (4, 1), (5, 1) ว่าง
+    board = setCell(board, 4, 0, 0);
+    board = setCell(board, 3, 1, 0);
+    board = setCell(board, 4, 1, 0);
+    board = setCell(board, 5, 1, 0);
+
+    const engine = new TetrisEngine();
+    engine.setBoard(board);
+    engine.setActivePiece(createTestPiece('T', 3, 0, 0));
+
+    const beforeSnapshot = engine.getRenderSnapshot();
+    const result = engine.rotate();
+
+    // หมุนไม่สำเร็จเพราะทุก offset ที่อยู่ในกระดานชนหมด และ offset ที่จะออกนอกกระดานถูกห้าม
+    expect(result.success).toBe(false);
+    const afterSnapshot = engine.getRenderSnapshot();
+    expect(afterSnapshot.activePiece.position.y).toBe(beforeSnapshot.activePiece.position.y);
+    expect(afterSnapshot.activePiece.rotation).toBe(beforeSnapshot.activePiece.rotation);
   });
 
   test('หมุนติดกันหลายครั้ง (0→1→2→3→0) กลางกระดานว่าง กลับมาตำแหน่ง/shape ตรงกับตอนเริ่ม (round-trip)', () => {

@@ -136,6 +136,34 @@ export function restartLockTimer(state: MovementState, onTimeout?: () => void): 
 }
 
 /**
+ * ตรวจสอบว่าชิ้นส่วนมีบล็อกใดๆ อยู่เหนือขอบบนของกระดาน (boardY < 0) หรือไม่
+ * ใช้สำหรับตรวจจับเงื่อนไข Lock-Out ตามกฎ Tetris เมื่อชิ้นส่วนล็อกติดกระดาน
+ *
+ * @param piece ชิ้นส่วน Tetromino ที่ต้องการตรวจสอบ
+ * @returns boolean คืนค่า true หากมี cell ใด cell หนึ่งอยู่เหนือแถว 0 (y < 0)
+ */
+export function hasCellsAboveBoard(piece: ActivePiece): boolean {
+  const { shape, position } = piece;
+
+  for (let r = 0; r < shape.length; r++) {
+    const shapeRow = shape[r];
+    if (!shapeRow) continue;
+
+    for (let c = 0; c < shapeRow.length; c++) {
+      const cell = shapeRow[c];
+      if (!cell) continue;
+
+      const boardY = position.y + r;
+      if (boardY < 0) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+/**
  * สั่งให้ล็อกชิ้นส่วนลงบน board ทันที เคลียร์สถานะ lock delay และเรียก spawn ชิ้นส่วนใหม่ (C5)
  */
 export function performLock(state: MovementState): ActionResult {
@@ -147,12 +175,19 @@ export function performLock(state: MovementState): ActionResult {
     return { success: true, linesCleared: [], gameOver: state.gameOver ?? false };
   }
 
+  // หากชิ้นส่วนมีบล็อกอยู่เหนือกระดาน (boardY < 0) ถือเป็น Lock-Out (Game Over)
+  if (hasCellsAboveBoard(state.activePiece)) {
+    state.gameOver = true;
+  }
+
   // เรียก applyLock pipeline ที่ทำงานแบบ pure/immutable
   const nextState = applyLock(state);
 
   // Apply the pure transition before spawning on the original state owner.
   Object.assign(state, nextState);
-  state.spawnNextPiece?.();
+  if (!state.gameOver) {
+    state.spawnNextPiece?.();
+  }
 
   return {
     success: true,

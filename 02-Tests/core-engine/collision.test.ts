@@ -60,10 +60,10 @@ describe('checkCollision() - ตรวจจับการชนสำหรั
       expect(checkCollision(board, piece)).toBe(false);
     });
 
-    test('ชิ้นส่วนอยู่ใน Buffer Zone เหนือกระดาน (y < 0) แต่ตำแหน่ง x อยู่ในขอบเขต ไม่ชน', () => {
+    test('วางชิดขอบบนพอดี (block อยู่ที่ y=0) โดยไม่หลุดขอบ ไม่ชน', () => {
       const board = createEmptyBoard();
-      // T piece spawn มีบล็อกที่ row 0 และ 1 -> position.y = -1 แปลว่า row 0 อยู่ที่ y=-1, row 1 อยู่ที่ y=0
-      const piece = createTestPiece('T', 3, -1, 0);
+      // T piece spawn มีบล็อกที่ row 0 (y=0) และ row 1 (y=1) -> position.y = 0 อยู่ในขอบเขตพอดี ไม่ชน
+      const piece = createTestPiece('T', 3, 0, 0);
       expect(checkCollision(board, piece)).toBe(false);
     });
   });
@@ -173,18 +173,30 @@ describe('checkCollision() - ตรวจจับการชนสำหรั
     });
   });
 
-  describe('Buffer Zone และ Edge Cases', () => {
-    test('ชิ้นส่วนอยู่ใน Buffer Zone เหนือกระดาน (y < 0) แต่ออกนอกขอบซ้าย/ขวา ถือว่าชน', () => {
+  describe('ชนเพดาน / ขอบบน (Ceiling Collision: y < 0 - คืนค่า true)', () => {
+    test('ชิ้นส่วนขยับขึ้นจนบล็อกหลุดขอบบน (y < 0) คืนค่า true ตามข้อกำหนด Piece ต้องไม่สามารถเคลื่อนออกนอก board ได้', () => {
       const board = createEmptyBoard();
-      // O piece ที่ position.x = -2, y = -1 -> ออกนอกขอบซ้าย
-      const piece = createTestPiece('O', -2, -1);
+      // T piece ที่ position.y = -1 -> row 0 มีบล็อกอยู่ที่ y = -1+0 = -1 (หลุดขอบบน)
+      const piece = createTestPiece('T', 3, -1, 0);
       expect(checkCollision(board, piece)).toBe(true);
     });
 
-    test('ชิ้นส่วนทั้งชิ้นลอยอยู่เหนือกระดาน (y = -3) แต่ x อยู่ในขอบเขต ไม่ชน', () => {
+    test('I piece แนวนอน (rot 0, บล็อก row 1) ถ้า position.y = -2 บล็อกจะอยู่ที่ y = -2+1 = -1 ชนเพดาน', () => {
+      const board = createEmptyBoard();
+      const piece = createTestPiece('I', 3, -2, 0);
+      expect(checkCollision(board, piece)).toBe(true);
+    });
+
+    test('ชิ้นส่วนทั้งชิ้นลอยอยู่เหนือกระดาน (y = -3) คืนค่า true (ชนเพดาน)', () => {
       const board = createEmptyBoard();
       const piece = createTestPiece('I', 3, -3, 0);
-      expect(checkCollision(board, piece)).toBe(false);
+      expect(checkCollision(board, piece)).toBe(true);
+    });
+
+    test('ชิ้นส่วนที่ position.y < 0 และออกนอกขอบซ้ายด้วย ชนขอบเขต คืนค่า true', () => {
+      const board = createEmptyBoard();
+      const piece = createTestPiece('O', -2, -1);
+      expect(checkCollision(board, piece)).toBe(true);
     });
   });
 
