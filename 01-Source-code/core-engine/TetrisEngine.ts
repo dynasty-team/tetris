@@ -9,7 +9,7 @@ import type {
   GameStatus,
   Position,
 } from '../shared/types';
-import { createEmptyBoard } from '../shared/board-utils';
+import { createEmptyBoard, validateBoard } from '../shared/board-utils';
 import { checkCollision } from './collision';
 import { getShape } from './tetromino-shapes';
 import {
@@ -55,7 +55,12 @@ export class TetrisEngine implements CoreEngine, MovementState {
    * @param initialBoard กระดานเริ่มต้น (ถ้าไม่ระบุจะเป็น empty board 10x20)
    */
   constructor(randomizer?: SevenBagRandomizer, initialBoard?: Board) {
-    this.board = initialBoard ? initialBoard.map((row) => [...row]) : createEmptyBoard();
+    if (initialBoard !== undefined) {
+      validateBoard(initialBoard);
+      this.board = initialBoard.map((row) => [...row]);
+    } else {
+      this.board = createEmptyBoard();
+    }
     this.activePiece = null;
     this.score = 0;
     this.level = 1;
@@ -166,6 +171,7 @@ export class TetrisEngine implements CoreEngine, MovementState {
    * กำหนดกระดานใหม่ (ใช้สำหรับ Testing และ State restoration)
    */
   public setBoard(board: Board): void {
+    validateBoard(board);
     this.board = board.map((row) => [...row]);
   }
 
