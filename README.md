@@ -6,6 +6,9 @@
   Console-based Tetris game developed with TypeScript and Bun.
 </p>
 
+<p align="center">
+  <img src="./03-Documentation/gif/4.gif" width="500">
+</p>
 
 
 ## 🛠️ Tech Stack
@@ -21,6 +24,7 @@
 - [🛠️ Tech Stack](#️-tech-stack)
 - [Document](#document)
 - [Game Overview](#game-overview)
+- [Demo](#demo)
 - [Requirements](#requirements)
 - [Game Rules](#game-rules)
 - [Architecture](#architecture)
