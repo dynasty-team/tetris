@@ -1,6 +1,8 @@
 import React from "react";
 import { Box, Text, useWindowSize, render as inkRender } from "ink";
 import { isInBounds } from "../shared/board-utils";
+import { getShape } from "../core-engine/tetromino-shapes";
+import { lockPieceToBoard } from "../core-engine/movement";
 
 import type {
     ActivePiece,
@@ -35,56 +37,6 @@ const PIECE_COLORS: Record<TetrominoType, string> = {
     L: "#ff9f43",
 };
 
-const PIECE_SHAPES: Record<TetrominoType, number[][]> = {
-    I: [
-        [0, 0, 0, 0],
-        [1, 1, 1, 1],
-        [0, 0, 0, 0],
-        [0, 0, 0, 0],
-    ],
-
-    O: [
-        [0, 1, 1, 0],
-        [0, 1, 1, 0],
-        [0, 0, 0, 0],
-        [0, 0, 0, 0],
-    ],
-
-    T: [
-        [0, 1, 0, 0],
-        [1, 1, 1, 0],
-        [0, 0, 0, 0],
-        [0, 0, 0, 0],
-    ],
-
-    S: [
-        [0, 1, 1, 0],
-        [1, 1, 0, 0],
-        [0, 0, 0, 0],
-        [0, 0, 0, 0],
-    ],
-
-    Z: [
-        [1, 1, 0, 0],
-        [0, 1, 1, 0],
-        [0, 0, 0, 0],
-        [0, 0, 0, 0],
-    ],
-
-    J: [
-        [1, 0, 0, 0],
-        [1, 1, 1, 0],
-        [0, 0, 0, 0],
-        [0, 0, 0, 0],
-    ],
-
-    L: [
-        [0, 0, 1, 0],
-        [1, 1, 1, 0],
-        [0, 0, 0, 0],
-        [0, 0, 0, 0],
-    ],
-};
 
 
 // =============================
@@ -98,40 +50,6 @@ function cloneBoard(board: Board): Board {
     return board.map(row => [...row]);
 }
 
-
-// นำ Active Piece มาวางบน Board ที่ Copy มา
-function lockPiece(
-    board: Board,
-    piece: ActivePiece,
-    marker: CellValue
-): Board {
-
-    for (let row = 0; row < piece.shape.length; row++) {
-
-        const shapeRow = piece.shape[row];
-
-        if (!shapeRow) continue;
-
-        for (let col = 0; col < shapeRow.length; col++) {
-
-            if (shapeRow[col] !== 1) continue;
-
-            const boardY = piece.position.y + row;
-            const boardX = piece.position.x + col;
-
-            if (isInBounds(boardX, boardY)) {
-
-                const targetRow = board[boardY];
-
-                if (targetRow) {
-                    targetRow[boardX] = marker;
-                }
-            }
-        }
-    }
-
-    return board;
-}
 
 
 // =============================
@@ -212,7 +130,7 @@ function NextPiece({
     type: TetrominoType
 }): React.ReactElement {
 
-    const shape = PIECE_SHAPES[type];
+    const shape = getShape(type, 0);
     const color = PIECE_COLORS[type];
 
     return (
@@ -383,12 +301,10 @@ function GameUI({
     snapshot: RenderSnapshot
 }): React.ReactElement {
 
-    // Copy Board + วาง Active Piece
-    const displayBoard = lockPiece(
-        cloneBoard(snapshot.board),
-        snapshot.activePiece,
-        snapshot.activePiece.type
-    );
+   const displayBoard = lockPieceToBoard(
+    cloneBoard(snapshot.board),
+    snapshot.activePiece
+);
 
 
     return (
