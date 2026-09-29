@@ -61,11 +61,7 @@ export function spawnNextPieceStep<T extends MovementState = MovementState>(stat
 }
 
 /**
- * ประกอบ 3 ขั้นตอนเข้าด้วยกันผ่าน Higher-order Function: pipe()
+ * ประกอบขั้นตอน lock และ clear ซึ่งเป็น pure state transitions
  */
-export const applyLock = pipe(
-  lockActivePieceToBoardStep,
-  clearFullLinesStep,
-  spawnNextPieceStep,
-);
+export const applyLock = pipe(lockActivePieceToBoardStep, clearFullLinesStep);
 
