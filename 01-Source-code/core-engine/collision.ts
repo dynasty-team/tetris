@@ -15,24 +15,22 @@ import { BOARD_WIDTH, BOARD_HEIGHT } from '../shared/constants';
  * 1. ตรวจสอบขอบกระดาน (Boundary Check):
  *    - ขอบซ้าย: x < 0
  *    - ขอบขวา: x >= 10 (BOARD_WIDTH)
+ *    - ขอบบน (เพดาน): y < 0 (ตามข้อกำหนด Board: "Piece ต้องไม่สามารถเคลื่อนออกนอก board ได้")
  *    - ขอบล่าง (พื้น): y >= 20 (BOARD_HEIGHT)
- *    - ขอบบน (Buffer Zone): ในเกม Tetris มาตรฐาน (ตามระบบ SRS) ชิ้นส่วนที่เพิ่ง spawn
- *      หรือกระดอนจากการหมุน (Wall-Kick) สามารถลอยอยู่เหนือกระดานแถวที่ 0 (y < 0) ได้
- *      จึงไม่นับว่าชนเพดาน เว้นแต่จะออกนอกขอบซ้าย/ขวา
+ *    - ป้องกันไม่ให้ชิ้นส่วนหลุดออกนอกกระดาน หรือถูก Wall Kick ดันขึ้นเหนือแถว 0
  *
  * 2. ตรวจสอบการทับบล็อกเดิม (Occupied Cell Check):
- *    - สำหรับบล็อกที่อยู่ในขอบเขตกระดาน (y >= 0), หากตำแหน่งบนกระดาน board[y][x] !== 0
- *      (ไม่ใช่ช่องว่าง) จะถือว่าเกิดการชนกันทันที
+ *    - หากตำแหน่งบนกระดาน board[y][x] !== 0 (ไม่ใช่ช่องว่าง) จะถือว่าเกิดการชนกันทันที
  *
  * 3. การนำไปใช้ร่วมกับ Wall-Kick (SRS Wall-Kick System):
- *    - เมื่อผู้เล่นหมุนชิ้นส่วนใกล้กำแพง พื้น เพดาน (buffer zone) หรือบล็อกอื่น การหมุนตรงตำแหน่ง
+ *    - เมื่อผู้เล่นหมุนชิ้นส่วนใกล้กำแพง พื้น เพดาน หรือบล็อกอื่น การหมุนตรงตำแหน่ง
  *      เดิมอาจทำให้บล็อกบางส่วนชนหรือหลุดขอบกระดาน
  *    - ฟังก์ชัน `rotate()` ใน movement.ts จะดึงชุด offset [dx, dy] จาก `getWallKickOffsets()`
  *      ใน `wall-kick-data.ts` (ตามชนิด piece และ rotation state ก่อนหมุน) แล้วนำมาบวกเข้ากับ
  *      ตำแหน่งของ piece ที่หมุน shape แล้ว (candidate piece) ทดสอบทีละตัวด้วย
  *      `checkCollision(board, candidatePiece)`
- *    - หากคืนค่า `false` แสดงว่าตำแหน่ง kick นั้นวางได้จริง ชิ้นส่วนจะถูกขยับไปยังตำแหน่งนั้นทันที
- *      (offset แรกในตารางคือ [0, 0] เสมอ — ถ้าหมุนตรงจุดเดิมได้อยู่แล้วจะไม่มีการ kick เกิดขึ้น)
+ *    - หากคืนค่า `false` แสดงว่าตำแหน่ง kick นั้นวางได้จริงและอยู่ภายในขอบกระดานทั้งหมด
+ *      ชิ้นส่วนจะถูกขยับไปยังตำแหน่งนั้นทันที
  *    - หากคืนค่า `true` ทุก offset (สูงสุด 5 ตำแหน่งตามมาตรฐาน SRS) การหมุนจะล้มเหลวและรักษา
  *      ตำแหน่ง/rotation เดิมไว้ทั้งหมด
  *
@@ -62,21 +60,19 @@ export function checkCollision(board: Board, piece: ActivePiece): boolean {
         return true;
       }
 
-      // 2. ตรวจจับการชนขอบล่าง (แตะพื้นกระดานหรือหลุดลงไปด้านล่าง)
-      if (targetY >= BOARD_HEIGHT) {
+      // 2. ตรวจจับการชนขอบบน (เพดาน) หรือขอบล่าง (พื้นกระดาน)
+      // ตามข้อกำหนด Board: "Piece ต้องไม่สามารถเคลื่อนออกนอก board ได้"
+      if (targetY < 0 || targetY >= BOARD_HEIGHT) {
         return true;
       }
 
-      // 3. ตรวจจับการชนบล็อกที่วางอยู่แล้วบนกระดาน (เมื่ออยู่ในพิกัดกระดาน y >= 0)
-      // กรณี targetY < 0 ถือเป็น buffer zone เหนือกระดาน ไม่มีการชนกับบล็อกของกระดาน
-      if (targetY >= 0) {
-        const boardRow = board[targetY];
-        const boardCell = boardRow ? boardRow[targetX] : undefined;
+      // 3. ตรวจจับการชนบล็อกที่วางอยู่แล้วบนกระดาน (0 <= targetY < BOARD_HEIGHT)
+      const boardRow = board[targetY];
+      const boardCell = boardRow ? boardRow[targetX] : undefined;
 
-        // หากตำแหน่งบนกระดานไม่ใช่ช่องว่าง (CellValue !== 0) แสดงว่าเกิดการทับซ้อน
-        if (boardCell !== 0 && boardCell !== undefined) {
-          return true;
-        }
+      // หากตำแหน่งบนกระดานไม่ใช่ช่องว่าง (CellValue !== 0) แสดงว่าเกิดการทับซ้อน
+      if (boardCell !== 0 && boardCell !== undefined) {
+        return true;
       }
     }
   }
