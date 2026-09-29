@@ -150,8 +150,9 @@ export function performLock(state: MovementState): ActionResult {
   // เรียก applyLock pipeline ที่ทำงานแบบ pure/immutable
   const nextState = applyLock(state);
 
-  // Single point of mutation: อัปเดต state กลับเข้า engine ที่จุดเดียว ณ ขอบของระบบ
+  // Apply the pure transition before spawning on the original state owner.
   Object.assign(state, nextState);
+  state.spawnNextPiece?.();
 
   return {
     success: true,
