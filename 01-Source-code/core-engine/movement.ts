@@ -185,7 +185,9 @@ export function performLock(state: MovementState): ActionResult {
 
   // Apply the pure transition before spawning on the original state owner.
   Object.assign(state, nextState);
-  state.spawnNextPiece?.();
+  if (!state.gameOver) {
+    state.spawnNextPiece?.();
+  }
 
   return {
     success: true,

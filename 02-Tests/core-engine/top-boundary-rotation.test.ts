@@ -225,6 +225,8 @@ describe('Top Boundary Rotation & Lock Integrity (ขอบบนและจำ
         },
       };
       applyLock(normalState);
+      expect(normalSpawnCalled).toBe(false);
+      performLock(normalState);
       expect(normalSpawnCalled).toBe(true);
 
       // 2. กรณี Lock-Out: gameOver = true และ spawnNextPiece ต้องไม่ถูกเรียก
@@ -234,6 +236,10 @@ describe('Top Boundary Rotation & Lock Integrity (ขอบบนและจำ
       // เมื่อ gameOver แล้ว applyLock จะต้องไม่เรียก spawnNextPiece เพิ่ม
       const finalState = applyLock(state);
       expect(finalState.gameOver).toBe(true);
+      expect(spawnCalled).toBe(false);
+
+      performLock(state);
+      expect(state.gameOver).toBe(true);
       expect(spawnCalled).toBe(false);
     });
   });
