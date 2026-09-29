@@ -171,9 +171,6 @@ describe('GameStateLoop Orchestrator', () => {
       onLoad: () => ({
         version: 1,
         highScore: 1000,
-        level: 5,
-        linesCleared: 20,
-        timestamp: '2026-09-15T10:00:00.000Z',
       }),
       onSave: () => { saveCount++; },
     });
@@ -208,8 +205,6 @@ describe('GameStateLoop Orchestrator', () => {
   test('tick() หยุดเกมและเรียก onSave เมื่อเกิด Game Over', async () => {
     let savedData: SaveData | null = null;
     engine.score = 500;
-    engine.level = 2;
-    engine.linesClearedTotal = 10;
 
     const loop = new GameStateLoop({
       engine,
@@ -231,7 +226,6 @@ describe('GameStateLoop Orchestrator', () => {
 
     expect(savedData).not.toBeNull();
     expect(savedData!.highScore).toBe(500);
-    expect(savedData!.level).toBe(2);
   });
 
   test('จัดการผลลัพธ์เมื่อชิ้นส่วนถูกล็อก', async () => {

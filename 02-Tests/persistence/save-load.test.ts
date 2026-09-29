@@ -58,9 +58,6 @@ describe('Persistence - saveGame & loadGame', () => {
     const data: SaveData = {
       version: CURRENT_SAVE_VERSION,
       highScore: 1250,
-      level: 3,
-      linesCleared: 8,
-      timestamp: '2026-09-15T10:00:00.000Z',
     };
 
     await saveGame(data, TEST_SAVE_FILE);
@@ -77,18 +74,12 @@ describe('Persistence - saveGame & loadGame', () => {
     const initialData: SaveData = {
       version: CURRENT_SAVE_VERSION,
       highScore: 500,
-      level: 1,
-      linesCleared: 2,
-      timestamp: '2026-09-15T08:00:00.000Z',
     };
     await saveGame(initialData, TEST_SAVE_FILE);
 
     const updatedData: SaveData = {
       version: CURRENT_SAVE_VERSION,
       highScore: 2500,
-      level: 5,
-      linesCleared: 15,
-      timestamp: '2026-09-15T12:00:00.000Z',
     };
     await saveGame(updatedData, TEST_SAVE_FILE);
 
@@ -97,16 +88,12 @@ describe('Persistence - saveGame & loadGame', () => {
 
     expect(parsed).toEqual(updatedData);
     expect(parsed.highScore).toBe(2500);
-    expect(parsed.linesCleared).toBe(15);
   });
 
   test('saveGame() จัดการ error แบบ graceful กรณีเขียนไฟล์ไม่ได้ (เช่น path เป็น directory) โดยไม่ crash', async () => {
     const data: SaveData = {
       version: CURRENT_SAVE_VERSION,
       highScore: 100,
-      level: 1,
-      linesCleared: 1,
-      timestamp: new Date().toISOString(),
     };
 
     fs.mkdirSync(TEST_DIR, { recursive: true });
@@ -117,9 +104,6 @@ describe('Persistence - saveGame & loadGame', () => {
     const data: SaveData = {
       version: CURRENT_SAVE_VERSION,
       highScore: 100,
-      level: 1,
-      linesCleared: 1,
-      timestamp: new Date().toISOString(),
     };
 
     await expect(saveGame(data, '\0')).resolves.toBeUndefined();
@@ -141,15 +125,26 @@ describe('Persistence - saveGame & loadGame', () => {
     const data: SaveData = {
       version: CURRENT_SAVE_VERSION,
       highScore: 3000,
-      level: 6,
-      linesCleared: 20,
-      timestamp: '2026-09-15T15:00:00.000Z',
     };
     await saveGame(data, TEST_SAVE_FILE);
 
     const loaded = await loadGame(TEST_SAVE_FILE);
     expect(loaded).not.toBeNull();
     expect(loaded).toEqual(data);
+  });
+
+  test('loadGame() ยังคงอ่าน high score จากไฟล์ v1 ที่มี metadata เดิมได้', async () => {
+    fs.mkdirSync(TEST_DIR, { recursive: true });
+    fs.writeFileSync(TEST_SAVE_FILE, JSON.stringify({
+      version: CURRENT_SAVE_VERSION,
+      highScore: 700,
+      level: 3,
+      linesCleared: 8,
+      timestamp: '2026-09-15T10:00:00.000Z',
+    }), 'utf-8');
+
+    const loaded = await loadGame(TEST_SAVE_FILE);
+    expect(loaded?.highScore).toBe(700);
   });
 
   test('loadGame() คืนค่า null แบบ graceful เมื่อไฟล์ไม่มีอยู่จริง', async () => {
@@ -177,9 +172,6 @@ describe('Persistence - saveGame & loadGame', () => {
     fs.writeFileSync(TEST_SAVE_FILE, JSON.stringify({
       version: 999,
       highScore: 100,
-      level: 1,
-      linesCleared: 0,
-      timestamp: '2026-09-15T10:00:00.000Z',
     }), 'utf-8');
 
     const loaded = await loadGame(TEST_SAVE_FILE);
@@ -190,8 +182,6 @@ describe('Persistence - saveGame & loadGame', () => {
     let savedDataReceived = null as SaveData | null;
     const engine = new TestEngine();
     engine.score = 900;
-    engine.level = 4;
-    engine.linesClearedTotal = 12;
 
     const loop = new GameStateLoop({
       engine,
@@ -210,8 +200,6 @@ describe('Persistence - saveGame & loadGame', () => {
 
     expect(savedDataReceived).not.toBeNull();
     expect(savedDataReceived?.highScore).toBe(900);
-    expect(savedDataReceived?.level).toBe(4);
-    expect(savedDataReceived?.linesCleared).toBe(12);
     expect(savedDataReceived?.version).toBe(CURRENT_SAVE_VERSION);
 
     // ตรวจสอบไฟล์ที่เขียนลง disk
@@ -266,8 +254,6 @@ describe('Persistence - saveGame & loadGame', () => {
     expect(fs.existsSync(TEST_SAVE_FILE)).toBe(true);
     const diskData = await loadGame(TEST_SAVE_FILE);
     expect(diskData?.highScore).toBe(1200);
-    expect(diskData?.level).toBe(3);
-    expect(diskData?.linesCleared).toBe(10);
   });
 
   test('เชื่อมต่อเข้ากับ GameStateLoop: รองรับ onSave แบบ Async Promise และ triggerSave() ตรง', async () => {

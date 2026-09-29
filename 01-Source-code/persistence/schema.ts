@@ -23,17 +23,5 @@ export function validateSaveData(data: unknown): data is SaveData {
         return false;
     }
 
-    if (typeof saveData.level !== "number") {
-        return false;
-    }
-
-    if (typeof saveData.linesCleared !== "number") {
-        return false;
-    }
-
-    if (typeof saveData.timestamp !== "string") {
-        return false;
-    }
-
     return true;
 }

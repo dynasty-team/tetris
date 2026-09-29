@@ -6,9 +6,6 @@ describe('validateSaveData() - Schema Validation', () => {
   const validSaveData: SaveData = {
     version: CURRENT_SAVE_VERSION,
     highScore: 1000,
-    level: 1,
-    linesCleared: 4,
-    timestamp: '2026-09-15T10:00:00.000Z',
   };
 
   // 1. data เป็น non-object (null, undefined, "string", []) -> false
@@ -59,7 +56,7 @@ describe('validateSaveData() - Schema Validation', () => {
 
   // 3. object ที่ขาด field ใดๆ ไปทีละตัว -> false
   describe('3. object ที่ขาด field ใดๆ ไปทีละตัว -> false', () => {
-    const fields: (keyof SaveData)[] = ['version', 'highScore', 'level', 'linesCleared', 'timestamp'];
+    const fields: (keyof SaveData)[] = ['version', 'highScore'];
 
     for (const field of fields) {
       test(`ขาด field "${field}" -> false`, () => {
@@ -75,9 +72,6 @@ describe('validateSaveData() - Schema Validation', () => {
     const wrongTypeCases: { field: keyof SaveData; invalidValues: unknown[] }[] = [
       { field: 'version', invalidValues: ['1', null, true, {}, []] },
       { field: 'highScore', invalidValues: ['1000', null, true, {}, []] },
-      { field: 'level', invalidValues: ['1', null, false, {}, []] },
-      { field: 'linesCleared', invalidValues: ['4', null, true, {}, []] },
-      { field: 'timestamp', invalidValues: [1726390000000, null, true, {}, new Date()] },
     ];
 
     for (const { field, invalidValues } of wrongTypeCases) {
@@ -101,9 +95,6 @@ describe('validateSaveData() - Schema Validation', () => {
       const zeroData: SaveData = {
         version: CURRENT_SAVE_VERSION,
         highScore: 0,
-        level: 0,
-        linesCleared: 0,
-        timestamp: '2026-09-15T00:00:00.000Z',
       };
       expect(validateSaveData(zeroData)).toBe(true);
     });

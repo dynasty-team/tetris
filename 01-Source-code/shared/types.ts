@@ -100,14 +100,8 @@ export interface InputSource {
 
 export interface SaveData {
   version: number;
-  /** คะแนนสูงสุดตลอดกาล */
+  /** คะแนนสูงสุดตลอดกาล; SaveData ไม่ใช่ snapshot สำหรับ resume เกม */
   highScore: number;
-  /** level ณ ตอนที่ทำ highScore นี้ได้ (ไม่ใช่ level ของตาล่าสุด) */
-  level: number;
-  /** จำนวนแถวที่เคลียร์ได้ในตาที่ทำ highScore นี้ */
-  linesCleared: number;
-  /** เวลาที่ทำสถิตินี้ได้ */
-  timestamp: string;
 }
 
 // ---------- Core Engine Interface ----------

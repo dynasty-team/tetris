@@ -1,6 +1,6 @@
 // 01-Source-code/persistence/SaveManager.ts
 //
-// โมดูลสำหรับจัดการบันทึกและโหลดสถานะเกม (Persistence Layer)
+// โมดูลสำหรับจัดการบันทึกและโหลดสถิติคะแนนสูงสุด (Persistence Layer)
 // รองรับการเขียนและอ่านไฟล์ JSON ตาม SaveData schema
 // พร้อมการจัดการข้อผิดพลาด (Graceful Error Handling) เพื่อไม่ให้เกม crash
 
@@ -12,7 +12,7 @@ import { validateSaveData } from './schema';
 export const DEFAULT_SAVE_FILE = './save-data.json';
 
 /**
- * บันทึกข้อมูลสถานะเกมลงไฟล์ JSON ตาม schema จาก save-data.json
+ * บันทึกข้อมูล high score ลงไฟล์ JSON ตาม SaveData schema
  * - สร้างไฟล์ใหม่หากยังไม่มี หรือ overwrite หากมีไฟล์อยู่แล้ว
  * - จัดการข้อผิดพลาด (เช่น สิทธิ์ไม่พอ, disk เต็ม, ข้อมูลไม่ตรง schema) อย่างปลอดภัย ไม่ทำให้เกม crash
  *
@@ -51,7 +51,7 @@ export async function saveGame(data: SaveData, filePath: string = DEFAULT_SAVE_F
 }
 
 /**
- * โหลดข้อมูลสถานะเกมจากไฟล์ JSON
+ * โหลดข้อมูล high score จากไฟล์ JSON
  * - ตรวจสอบความถูกต้องของข้อมูลตาม SaveData schema
  * - หากไฟล์ไม่มีอยู่ หรือข้อมูลไม่ถูกต้อง จะ return null โดยไม่ทำให้เกิด crash
  *

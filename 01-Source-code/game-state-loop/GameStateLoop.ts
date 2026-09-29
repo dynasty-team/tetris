@@ -372,9 +372,6 @@ export class GameStateLoop {
       const saveData: SaveData = {
         version: CURRENT_SAVE_VERSION,
         highScore: currentScore,
-        level: this.engine.getLevel(),
-        linesCleared: this.engine.getLinesClearedTotal(),
-        timestamp: new Date().toISOString(),
       };
 
       await this.onSave(saveData);
