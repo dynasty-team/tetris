@@ -16,14 +16,6 @@ export function createEmptyBoard(): Board {
 }
 
 /**
- * อ่านค่า cell อย่างปลอดภัย — นอกขอบ board ถือว่า 0 (ว่าง)
- * ปกติควรเช็ค bound ก่อนเรียกอยู่แล้ว แต่ฟังก์ชันนี้กันพลาดอีกชั้น
- */
-export function getCell(board: Board, x: number, y: number): CellValue {
-  return board[y]?.[x] ?? 0;
-}
-
-/**
  * คืน board ใหม่ที่เปลี่ยนค่า cell ตำแหน่ง (x, y) เป็น value
  * เป็น pure function — ไม่ mutate board เดิม (ตาม FP requirement)
  */
@@ -35,7 +27,51 @@ export function setCell(board: Board, x: number, y: number, value: CellValue): B
   );
 }
 
+
+
 /** เช็คว่าตำแหน่ง (x, y) อยู่ในขอบ board ไหม */
 export function isInBounds(x: number, y: number): boolean {
   return x >= 0 && x < BOARD_WIDTH && y >= 0 && y < BOARD_HEIGHT;
 }
+
+/**
+ * ตรวจสอบความถูกต้องของ board ว่าเป็น 2D array ขนาด 20 แถว x 10 คอลัมน์ (BOARD_HEIGHT x BOARD_WIDTH) พอดีหรือไม่
+ */
+export function isValidBoard(board: unknown): board is Board {
+  if (!Array.isArray(board) || board.length !== BOARD_HEIGHT) {
+    return false;
+  }
+  for (let y = 0; y < BOARD_HEIGHT; y++) {
+    const row = board[y];
+    if (!Array.isArray(row) || row.length !== BOARD_WIDTH) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/**
+ * ตรวจสอบความถูกต้องของขนาด board หากขนาดไม่ใช่ 20 แถว x 10 คอลัมน์ จะโยน Error ชัดเจน
+ */
+export function validateBoard(board: unknown): asserts board is Board {
+  if (!Array.isArray(board)) {
+    throw new Error('Invalid board: board must be an array');
+  }
+  if (board.length !== BOARD_HEIGHT) {
+    throw new Error(
+      `Invalid board height: board must have exactly ${BOARD_HEIGHT} rows, but got ${board.length}`,
+    );
+  }
+  for (let y = 0; y < BOARD_HEIGHT; y++) {
+    const row = board[y];
+    if (!Array.isArray(row)) {
+      throw new Error(`Invalid board row at index ${y}: row must be an array`);
+    }
+    if (row.length !== BOARD_WIDTH) {
+      throw new Error(
+        `Invalid board width at row ${y}: each row must have exactly ${BOARD_WIDTH} columns, but got ${row.length}`,
+      );
+    }
+  }
+}
+

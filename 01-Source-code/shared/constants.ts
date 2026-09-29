@@ -16,11 +16,6 @@ export const LOCK_DELAY_MS = 500;
  */
 export const MAX_LOCK_RESETS = 15;
 
-/**
- * ขนาดถุงของ 7-bag randomizer — สับ 7 piece ในถุงแล้วหยิบทีละใบจนหมดถุงถึงสับใหม่
- * (ห้ามใช้ Math.random() ล้วนๆ เพราะจะได้ piece ซ้ำติดกันเยอะเกินไป ไม่ตรงมาตรฐาน)
- */
-export const BAG_SIZE = 7;
 
 /** ขนาด board มาตรฐาน */
 export const BOARD_WIDTH = 10;

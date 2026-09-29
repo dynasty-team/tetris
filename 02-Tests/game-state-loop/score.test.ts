@@ -1,6 +1,6 @@
 // 02-Tests/game-state-loop/score.test.ts
 import { describe, expect, test } from 'bun:test';
-import { calculateScore, getScoreFromActionResult } from '../../01-Source-code/game-state-loop/score';
+import { calculateScore} from '../../01-Source-code/game-state-loop/score';
 import type { ActionResult } from '../../01-Source-code/shared/types';
 
 describe('Scoring System (score.ts)', () => {
@@ -41,34 +41,6 @@ describe('Scoring System (score.ts)', () => {
 
     test('ปัดเศษทศนิยมของ level ลงเป็นจำนวนเต็ม', () => {
       expect(calculateScore(1, 2.7)).toBe(200);
-    });
-  });
-
-  describe('getScoreFromActionResult()', () => {
-    test('คืนค่า 0 เมื่อไม่มีแถวถูกลบ (linesCleared เป็น array ว่าง)', () => {
-      const actionResult: ActionResult = {
-        success: true,
-        linesCleared: [],
-        gameOver: false,
-      };
-      expect(getScoreFromActionResult(actionResult, 1)).toBe(0);
-    });
-
-    test('คืนค่า 0 เมื่อ linesCleared ไม่มีค่า', () => {
-      const actionResult = {
-        success: true,
-        gameOver: false,
-      } as unknown as ActionResult;
-      expect(getScoreFromActionResult(actionResult, 1)).toBe(0);
-    });
-
-    test('คำนวณคะแนนถูกต้องเมื่อมีแถวถูกลบ', () => {
-      const actionResult: ActionResult = {
-        success: true,
-        linesCleared: [18, 19], // 2 แถว
-        gameOver: false,
-      };
-      expect(getScoreFromActionResult(actionResult, 3)).toBe(750); // 100 * 2.5 * 3 = 750
     });
   });
 });

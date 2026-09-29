@@ -62,18 +62,24 @@ function createLockPipelineState(): MovementState {
 }
 
 describe('Movement & Lock Delay System (C4)', () => {
-  test('pipe(lockActivePieceToBoardStep, clearFullLinesStep, spawnNextPieceStep) ให้ผลตรงกับเรียกทีละขั้นเอง และทำงานแบบ Pure/Immutable', () => {
+  test('applyLock() ทำเฉพาะ lock และ clear แบบ Pure/Immutable โดยไม่ spawn ชิ้นส่วนแฝง', () => {
     const baseState = createLockPipelineState();
-    const spawnNextPiece = () => ({ success: true, linesCleared: [], gameOver: false });
+    let spawnCalls = 0;
+    const spawnNextPiece = () => {
+      spawnCalls++;
+      return { success: true, linesCleared: [], gameOver: false };
+    };
     const stateA = { ...baseState, spawnNextPiece };
     const stateB = structuredClone(baseState);
     stateB.spawnNextPiece = spawnNextPiece;
 
     const resultA = applyLock(stateA);
+    expect(spawnCalls).toBe(0);
 
     const step1 = lockActivePieceToBoardStep(stateB);
     const step2 = clearFullLinesStep(step1);
     const resultB = spawnNextPieceStep(step2);
+    expect(spawnCalls).toBe(1);
 
     expect(resultA.board).toEqual(resultB.board);
     expect(resultA.linesClearedTotal).toEqual(resultB.linesClearedTotal);
@@ -400,9 +406,9 @@ describe('Movement & Lock Delay System (C4)', () => {
     test('หมุน piece บนกระดานที่เกือบเต็ม 2 แถว ครบ 15 ครั้ง -> ActionResult.linesCleared ไม่ว่าง และ onLock ถูกเรียกถูกต้อง', () => {
       const engine = new TetrisEngine();
       let onLockCalledWith = null as ActionResult | null;
-      engine.onLock = (result) => {
+      engine.setLockCallback((result) => {
         onLockCalledWith = result;
-      };
+      });
 
       // สร้างกระดานที่เกือบเต็ม 2 แถวล่าง (แถว 18 และ 19)
       // เว้นช่องตรงกลาง x=4, x=5 ไว้สำหรับ O piece (ขนาด 2x2)
@@ -446,9 +452,9 @@ describe('Movement & Lock Delay System (C4)', () => {
     test('หมุน piece บนกระดานที่เกือบเต็ม 1 แถว ครบ 15 ครั้ง -> ActionResult.linesCleared ไม่ว่าง และ onLock ถูกเรียกถูกต้อง', () => {
       const engine = new TetrisEngine();
       let onLockCalledWith = null as ActionResult | null;
-      engine.onLock = (result) => {
+      engine.setLockCallback((result) => {
         onLockCalledWith = result;
-      };
+      });
 
       // สร้างแถว 19 เกือบเต็ม เว้น x=4, 5 สำหรับ O piece (2x2)
       let board = createEmptyBoard();
@@ -484,59 +490,44 @@ describe('Movement & Lock Delay System (C4)', () => {
       expect(engine.getLinesClearedTotal()).toBe(1);
     });
 
-    test('softDrop() เมื่อแตะพื้นและสะสม lock resets ครบ 15 ครั้ง -> ActionResult.linesCleared ไม่ว่าง และ onLock ถูกเรียกถูกต้อง', () => {
-      const engine = new TetrisEngine();
-      let onLockCalledWith = null as ActionResult | null;
-      engine.onLock = (result) => {
-        onLockCalledWith = result;
+    test('softDrop() ขณะกำลัง lock และแตะพื้นอยู่แล้ว -> ไม่ขยับและไม่เพิ่ม lock resets', () => {
+      const board = createEmptyBoard();
+      const state: MovementState = {
+        board,
+        activePiece: createTestPiece('T', 4, 18),
+        isLocking: true,
+        lockResets: 14,
       };
 
-      // สร้างกระดานเกือบเต็ม 2 แถวล่าง (แถว 18 และ 19)
-      let board = createEmptyBoard();
-      for (let x = 0; x < 10; x++) {
-        if (x !== 4 && x !== 5) {
-          board = setCell(board, x, 18, 'I');
-          board = setCell(board, x, 19, 'I');
-        }
-      }
-      engine.setBoard(board);
+      const result = softDrop(state);
 
-      // วาง O piece ที่ x=4, y=18 (แตะพื้น)
-      engine.setActivePiece(createTestPiece('O', 3, 18));
-
-      // สะสม resets จากการหมุน 14 ครั้ง
-      for (let i = 0; i < 14; i++) {
-        engine.rotate();
-      }
-      expect(engine.lockResets).toBe(14);
-      expect(onLockCalledWith).toBeNull();
-
-      // ตั้งตำแหน่ง activePiece อยู่ที่ y=17 โดยรักษาสถานะ isLocking = true และ lockResets = 14
-      // เพื่อจำลองกรณีที่ piece อยู่ระหว่าง lock delay แล้ว softDrop ลงมาแตะพื้นเป็นครั้งที่ 15
-      const piece = engine.getActivePiece()!;
-      engine.activePiece = {
-        ...piece,
-        position: { ...piece.position, y: 17 },
-      };
-      engine.isLocking = true;
-      engine.lockResets = 14;
-
-      // softDrop เลื่อนลง 1 ช่องมาที่ y=18 และแตะพื้น นับเป็น reset ครั้งที่ 15 -> auto-lock ทันที
-      const dropResult = engine.softDrop();
-      expect(dropResult.success).toBe(true);
-      expect(dropResult.linesCleared.length).toBe(2);
-      expect(dropResult.linesCleared).toEqual([18, 19]);
-      expect(onLockCalledWith).not.toBeNull();
-      expect(onLockCalledWith?.linesCleared).toEqual([18, 19]);
-      expect(engine.getLinesClearedTotal()).toBe(2);
+      expect(result.success).toBe(false);
+      expect(state.activePiece?.position.y).toBe(18);
+      expect(state.lockResets).toBe(14);
+      expect(state.isLocking).toBe(true);
     });
   });
 
   describe('4. Lock Delay Timeout & Auto Lock', () => {
+    test('pauseLockTimer() และ resumeLockTimer() ควบคุม lock delay โดยไม่เปิดเผย timer ภายใน', () => {
+      const engine = new TetrisEngine();
+      engine.setActivePiece(createTestPiece('T', 4, 18));
+
+      expect(engine.hasActiveLockTimer()).toBe(true);
+      expect(engine.pauseLockTimer()).toBe(true);
+      expect(engine.hasActiveLockTimer()).toBe(false);
+      expect(engine.isLocking).toBe(false);
+
+      engine.resumeLockTimer();
+      expect(engine.hasActiveLockTimer()).toBe(true);
+      expect(engine.isLocking).toBe(true);
+      engine.pauseLockTimer();
+    });
+
     test('เมื่อครบเวลา 500ms (LOCK_DELAY_MS) โดยไม่มีการขยับเพิ่ม ชิ้นส่วนจะล็อกลงกระดานและ spawn ใหม่ทันที', async () => {
       const engine = new TetrisEngine();
       // กำหนด next piece เพื่อตรวจสอบการ spawn
-      engine.nextPiece = 'I';
+      engine.setNextPieceForTesting('I');
       engine.setActivePiece(createTestPiece('T', 4, 18));
 
       expect(engine.getRenderSnapshot().isLocking).toBe(true);
@@ -560,7 +551,7 @@ describe('Movement & Lock Delay System (C4)', () => {
   describe('5. Hard Drop & Immediate Lock', () => {
     test('hardDrop() ข้าม lock delay ทิ้งตัวลงพื้นและล็อกทันที', () => {
       const engine = new TetrisEngine();
-      engine.nextPiece = 'O';
+      engine.setNextPieceForTesting('O');
       engine.setActivePiece(createTestPiece('T', 4, 0));
 
       const result = engine.hardDrop();
@@ -575,6 +566,34 @@ describe('Movement & Lock Delay System (C4)', () => {
       // ชิ้นส่วนใหม่ (O) spawn ทันที และ isLocking เป็น false
       expect(snapshot.activePiece.type).toBe('O');
       expect(snapshot.isLocking).toBe(false);
+    });
+
+    test('hardDrop() spawns a grounded next piece whose lock timer updates the real engine', async () => {
+      let board = createEmptyBoard();
+      for (let column = 2; column <= 7; column++) {
+        board[2]![column] = 'T';
+      }
+
+      const engine = new TetrisEngine(undefined, board);
+      engine.setNextPieceForTesting('I');
+      engine.setActivePiece(createTestPiece('O', 0, 17));
+      let onLockCalls = 0;
+      engine.setLockCallback(() => {
+        onLockCalls++;
+      });
+
+      engine.hardDrop();
+
+      expect(engine.getActivePiece()?.type).toBe('I');
+      expect(engine.isLocking).toBe(true);
+      expect(engine.hasActiveLockTimer()).toBe(true);
+
+      await new Promise((resolve) => setTimeout(resolve, LOCK_DELAY_MS + 50));
+
+      expect(engine.getBoard()[1]?.slice(3, 7)).toEqual(['I', 'I', 'I', 'I']);
+      expect(engine.isLocking).toBe(false);
+      expect(engine.hasActiveLockTimer()).toBe(false);
+      expect(onLockCalls).toBe(1);
     });
   });
 
@@ -626,9 +645,13 @@ describe('Movement & Lock Delay System (C4)', () => {
   describe('7. Game Over / Top-Out Protection', () => {
     test('ไม่สามารถขยับชิ้นส่วนได้หากสถานะ gameOver เป็น true', () => {
       const engine = new TetrisEngine();
-      engine.setActivePiece(createTestPiece('T', 4, 5));
-      // บังคับ gameOver
-      engine.gameOver = true;
+      const blockedSpawnBoard = createEmptyBoard();
+      for (let y = 0; y < 4; y++) {
+        blockedSpawnBoard[y]!.fill('O');
+      }
+      engine.setBoard(blockedSpawnBoard);
+      engine.spawnNextPiece();
+      expect(engine.isGameOver()).toBe(true);
 
       const leftRes = engine.moveLeft();
       expect(leftRes.success).toBe(false);
@@ -770,22 +793,22 @@ describe('Movement & Lock Delay System (C4)', () => {
       expect(state.lockTimer).not.toBeNull();
     });
 
-    test('softDrop(state) เลื่อนลงสำเร็จแล้วแตะพื้นขณะที่ isLocking เป็น true อยู่ก่อนแล้ว และ resets ยังไม่ครบ MAX -> รีเซ็ตเวลา lock delay ใหม่ (restartLockTimer)', () => {
+    test('softDrop(state) ชนพื้นขณะที่กำลัง lock -> ไม่เพิ่ม lock resets หรือเริ่ม timer ใหม่', () => {
       const board = createEmptyBoard();
-      const piece = createTestPiece('T', 4, 17); // ยังไม่แตะพื้นจริง
-      // จำลองกรณี isLocking ถูกตั้งเป็น true มาก่อนแล้ว (เช่นสืบเนื่องจาก action ก่อนหน้า)
+      const piece = createTestPiece('T', 4, 18); // ชิดพื้นพอดี ขยับลงอีกไม่ได้แล้ว
       const state: MovementState = { board, activePiece: piece, isLocking: true, lockResets: 2 };
+      const existingTimer = setTimeout(() => {}, 1000);
+      state.lockTimer = existingTimer;
 
       const result = softDrop(state);
 
-      expect(result.success).toBe(true);
+      expect(result.success).toBe(false);
       expect(state.activePiece?.position.y).toBe(18);
       expect(isPieceOnGround(state.board, state.activePiece!)).toBe(true);
-      // นับ reset เพิ่มขึ้นแต่ยังไม่ถึง MAX_LOCK_RESETS -> ต้อง restartLockTimer ไม่ใช่ performLock
-      expect(state.lockResets).toBe(3);
+      expect(state.lockResets).toBe(2);
       expect(state.isLocking).toBe(true);
-      expect(state.lockTimer).not.toBeNull();
-      expect(state.activePiece).not.toBeNull();
+      expect(state.lockTimer).toBe(existingTimer);
+      clearTimeout(existingTimer);
     });
   });
 

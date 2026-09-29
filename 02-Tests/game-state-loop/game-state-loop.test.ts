@@ -12,6 +12,8 @@ class MockEngine implements CoreEngine {
   public gameOver = false;
   public movesCalled: string[] = [];
   public lastActionResult: ActionResult = { success: true, linesCleared: [], gameOver: false };
+  private lockCallback: ((result: ActionResult) => void) | null = null;
+  private lockPaused = false;
 
   public moveLeft(): ActionResult {
     this.movesCalled.push('moveLeft');
@@ -41,6 +43,12 @@ class MockEngine implements CoreEngine {
     this.movesCalled.push('spawnNextPiece');
     return this.lastActionResult;
   }
+  public getActivePiece() { return mockRenderSnapshot.activePiece; }
+  public setLockCallback(callback: ((result: ActionResult) => void) | null): void { this.lockCallback = callback; }
+  public pauseLockTimer(): boolean { const wasPaused = this.lockPaused; this.lockPaused = false; return wasPaused; }
+  public resumeLockTimer(): void { this.lockPaused = true; }
+  public emitLock(result: ActionResult): void { this.lockCallback?.(result); }
+  public hasLockCallback(): boolean { return this.lockCallback !== null; }
   public getRenderSnapshot(): RenderSnapshot {
     return {
       ...mockRenderSnapshot,
@@ -137,11 +145,13 @@ describe('GameStateLoop Orchestrator', () => {
 
   test('handleAction(QUIT) สั่งหยุด loop และ trigger save', async () => {
     let saved = false;
+    let stopCount = 0;
     engine.score = 1;
     const loop = new GameStateLoop({
       engine,
       onLoad: () => null,
       onSave: () => { saved = true; },
+      onStop: () => { stopCount++; },
     });
     await loop.start();
     loop.handleAction('QUIT');
@@ -149,6 +159,9 @@ describe('GameStateLoop Orchestrator', () => {
 
     expect(loop.isRunning()).toBe(false);
     expect(saved).toBe(true);
+    expect(stopCount).toBe(1);
+    loop.stop();
+    expect(stopCount).toBe(1);
   });
 
   test('ไม่เรียก onSave เมื่อคะแนนไม่ทำลายสถิติเดิม', async () => {
@@ -219,6 +232,64 @@ describe('GameStateLoop Orchestrator', () => {
     expect(savedData).not.toBeNull();
     expect(savedData!.highScore).toBe(500);
     expect(savedData!.level).toBe(2);
+  });
+
+  test('จัดการผลลัพธ์เมื่อชิ้นส่วนถูกล็อก', async () => {
+    let renderCount = 0;
+    const loop = new GameStateLoop({
+      engine,
+      renderer: () => { renderCount++; },
+      onLoad: () => null,
+    });
+    await loop.start();
+
+    expect(engine.hasLockCallback()).toBe(true);
+
+    engine.linesClearedTotal = 2;
+    engine.emitLock({
+      success: true,
+      linesCleared: [18, 19],
+      gameOver: false,
+    });
+
+    expect(engine.getScore()).toBe(250);
+    expect(engine.getHighScore()).toBe(250);
+    expect(renderCount).toBe(2);
+    loop.stop();
+  });
+
+  test('ละเว้นผลลัพธ์การล็อกเมื่อเกมหยุดหรือพัก', async () => {
+    let renderCount = 0;
+    const loop = new GameStateLoop({
+      engine,
+      renderer: () => { renderCount++; },
+    });
+    await loop.start();
+
+    loop.pause();
+    const pausedRenderCount = renderCount;
+    engine.emitLock({ success: true, linesCleared: [], gameOver: false });
+    expect(renderCount).toBe(pausedRenderCount);
+
+    loop.resume();
+    loop.stop();
+    const stoppedRenderCount = renderCount;
+    engine.emitLock({ success: true, linesCleared: [], gameOver: false });
+    expect(renderCount).toBe(stoppedRenderCount);
+  });
+
+  test('จบเกมเมื่อผลลัพธ์จากการล็อกระบุ Game Over', async () => {
+    let renderedStatus = '';
+    const loop = new GameStateLoop({
+      engine,
+      renderer: (snapshot) => { renderedStatus = snapshot.status; },
+    });
+    await loop.start();
+
+    engine.emitLock({ success: false, linesCleared: [], gameOver: true });
+
+    expect(loop.isRunning()).toBe(false);
+    expect(renderedStatus).toBe('gameover');
   });
 
   test('เรียก renderer callback ในแต่ละรอบ', async () => {

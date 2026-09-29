@@ -1,11 +1,12 @@
 import { checkAndClearLines } from './line-clear';
-import { lockPieceToBoard, type MovementState } from './movement';
+import { lockPieceToBoard, hasCellsAboveBoard, type MovementState } from './movement';
 import { pipe } from '../shared/utils';
 
 /**
  * ขั้นตอนที่ 1: ล็อก Active Piece ลงบน Board
  * ออกแบบเป็น Pure Function โดย clone กระดานก่อนประทับชิ้นส่วน
  * และคืน State ใหม่ (Immutable) โดยไม่ mutate state ต้นฉบับ
+ * หากชิ้นส่วนมีบล็อกอยู่เหนือกระดาน (boardY < 0) ให้ตั้งค่า gameOver = true (Lock-Out)
  */
 export function lockActivePieceToBoardStep<T extends MovementState = MovementState>(state: T): T {
   if (!state.activePiece) {
@@ -15,6 +16,9 @@ export function lockActivePieceToBoardStep<T extends MovementState = MovementSta
     };
   }
 
+  const isLockOut = hasCellsAboveBoard(state.activePiece);
+  const gameOver = Boolean(state.gameOver || isLockOut);
+
   const clonedBoard = state.board.map((row) => [...row]);
   const newBoard = lockPieceToBoard(clonedBoard, state.activePiece);
 
@@ -22,6 +26,7 @@ export function lockActivePieceToBoardStep<T extends MovementState = MovementSta
     ...state,
     board: newBoard,
     activePiece: null,
+    gameOver,
     spawnNextPiece: state.spawnNextPiece,
   };
 }
@@ -47,18 +52,16 @@ export function clearFullLinesStep<T extends MovementState = MovementState>(stat
  * โดยเรียก state.spawnNextPiece?.() เพื่อเปลี่ยนผ่าน activePiece แล้วคืน state ใหม่
  */
 export function spawnNextPieceStep<T extends MovementState = MovementState>(state: T): T {
-  state.spawnNextPiece?.();
+  if (!state.gameOver) {
+    state.spawnNextPiece?.();
+  }
   return {
     ...state,
   };
 }
 
 /**
- * ประกอบ 3 ขั้นตอนเข้าด้วยกันผ่าน Higher-order Function: pipe()
+ * ประกอบขั้นตอน lock และ clear ซึ่งเป็น pure state transitions
  */
-export const applyLock = pipe(
-  lockActivePieceToBoardStep,
-  clearFullLinesStep,
-  spawnNextPieceStep,
-);
+export const applyLock = pipe(lockActivePieceToBoardStep, clearFullLinesStep);
 

@@ -43,6 +43,10 @@ Tetris เป็นเกมแนว Puzzle เรียงชิ้นส่�
 เมื่อสามารถเติมแถวได้ครบ แถวนั้นจะถูกลบออกและผู้เล่นจะได้รับคะแนน
 เกมมีระบบ Score, Level และความเร็วในการตกที่เพิ่มขึ้นตาม Level โดยเกมจะจบเมื่อไม่สามารถสร้าง Tetromino ชิ้นใหม่ลงบน Board ได้
 โปรเจกต์นี้พัฒนาเป็น Console Game โดยแบ่งส่วนการทำงานออกเป็น Game Logic, Input, Rendering และ Save System เพื่อให้แต่ละส่วนสามารถพัฒนาและทดสอบได้ง่ายขึ้น
+## Demo
+
+วิดีโอตัวอย่างการเล่นเกม แสดงการควบคุม Tetromino, Line Clear, Score, Pause/Resume, Game Over และการบันทึก High Score
+[View Tetris Demo](04-Demo/tetris-demo.mp4)
 
 ## Requirements 
 
@@ -63,7 +67,7 @@ Tetris เป็นเกมแนว Puzzle เรียงชิ้นส่�
   - S / ↓ : Soft Drop
   - W / ↑ : Rotate
   - Space : Hard Drop
-  - P : Pause
+  - P : Pause 
   - Q : Quit
   
 - ระบบเกมต้องมี
@@ -75,6 +79,7 @@ Tetris เป็นเกมแนว Puzzle เรียงชิ้นส่�
 
 
 - Game Over เมื่อ ชิ้นส่วนบล็อก(Tetromino) ชิ้นใหม่ไม่สามารถ Spawn ได้
+
 ## Game Rules
 
 - วิธีการคำนวณคะแนน
@@ -99,6 +104,7 @@ Tetris เป็นเกมแนว Puzzle เรียงชิ้นส่�
 - เคลียร์ 3 แถว = 450 × 5 = 2,250 คะแนน
 - เคลียร์ 4 แถว = 800 × 5 = 4,000 คะแนน
 
+- ยิ่ง Level สูงขึ้นบล็อกจะตกเร็วขึ้น
 
 Game over
 เกมจะจบลงเมื่อ ชิ้นส่วนบล็อก(Tetromino) สูงขึ้นจนชนขอบด้านบนและไม่มีที่ว่างให้ชิ้นส่วนบล็อกใหม่ spawn ลงมาถือว่าเกม over ทันที  
@@ -110,64 +116,55 @@ Game over
 
 tetris/
 ├── 01-Source-code/
-│   ├── shared/
-│   │   ├── types.ts
-│   │   ├── constants.ts
-│   │   ├── board-utils.ts
-│   │   ├── mock-engine.ts
-│   │   └── utils.ts
-│   │
 │   ├── core-engine/
 │   │   ├── TetrisEngine.ts
-│   │   ├── tetromino-shapes.ts
 │   │   ├── collision.ts
-│   │   ├── movement.ts
+│   │   ├── index.ts
 │   │   ├── line-clear.ts
-│   │   ├── randomizer.ts
 │   │   ├── lock-pipeline.ts
-│   │   ├── wall-kick-data.ts
-│   │   └── index.ts
+│   │   ├── movement.ts
+│   │   ├── randomizer.ts
+│   │   ├── tetromino-shapes.ts
+│   │   └── wall-kick-data.ts
 │   │
 │   ├── game-state-loop/
 │   │   ├── GameStateLoop.ts
-│   │   ├── score.ts
+│   │   ├── index.ts
 │   │   ├── level.ts
-│   │   └── index.ts
+│   │   └── score.ts
 │   │
 │   ├── io-rendering/
 │   │   ├── ConsoleRenderer.ts
-│   │   └── KeyboardInput.ts
+│   │   ├── KeyboardInput.ts
+│   │   └── index.ts
 │   │
-│   └── persistence/
-│       ├── schema.ts
-│       ├── SaveManager.ts
-│       └── index.ts
+│   ├── persistence/
+│   │   ├── SaveManager.ts
+│   │   ├── index.ts
+│   │   └── schema.ts
+│   │
+│   └── shared/
+│       ├── board-utils.ts
+│       ├── constants.ts
+│       ├── mock-engine.ts
+│       ├── types.ts
+│       └── utils.ts
 │
 ├── 02-Tests/
 │   ├── core-engine/
-│   │   ├── collision.test.ts
-│   │   ├── line-clear.test.ts
-│   │   ├── movement.test.ts
-│   │   ├── randomizer.test.ts
-│   │   ├── score-level.test.ts
-│   │   ├── spawn.test.ts
-│   │   ├── tetromino-shapes.test.ts
-│   │   └── wall-kick.test.ts
-│   │
+│   ├── game-state-loop/
+│   ├── io-rendering/
 │   ├── persistence/
-│   │   └── save-load.test.ts
-│   │
 │   ├── shared/
-│   │   ├── board-utils.test.ts
-│   │   └── utils.test.ts
-│   │
 │   └── sample.test.ts
 │
 ├── 03-Documentation/
-│       ├── classdiagram.md
-|       └── decision-log.md
-|
+│   ├── classdiagram.md
+│   └── decision-log.md
+│
 ├── 04-Demo/
+│   ├── .gitkeep
+│   └── tetris-demo.mp4
 ├── index.ts
 ├── package.json
 ├── tsconfig.json
@@ -280,8 +277,8 @@ bun test
 - เกมสามารถเล่นได้ผ่าน Console / Terminal เท่านั้น
 - รองรับเฉพาะ Single Player
 - ยังไม่มี Online Leaderboard
-- การแสดงผลและ Keyboard Input อาจจะแตกต่างกันตาม Terminal ที่ใช้งาน
-- การเซฟเกมเก็บแค่สถิติ high score ไม่ได้เก็บสถานะ กระดาน ผู้เล่นไม่สามารถเล่นต่อจากเกมที่ค้างไว้ได้ 
+- การแสดงผลและการควบคุมด้วย Keyboard อาจแตกต่างกันเล็กน้อยตาม Terminal ที่ใช้งาน
+- ระบบ Save บันทึก High Score แต่ไม่ได้บันทึกเกมเพื่อกลับมาเล่นต่อ 
 - ยังไม่มี hold piece และ ghost piece แสดงตำแหน่งที่จะตก
 
 

@@ -25,7 +25,6 @@ export interface MovementState {
   gameOver?: boolean;
   nextPiece?: TetrominoType | null;
   linesClearedTotal?: number;
-  lockPiece?: () => ActionResult | void;
   spawnNextPiece?: () => ActionResult;
   lastClearedLines?: number[];
 }
@@ -137,6 +136,34 @@ export function restartLockTimer(state: MovementState, onTimeout?: () => void): 
 }
 
 /**
+ * ตรวจสอบว่าชิ้นส่วนมีบล็อกใดๆ อยู่เหนือขอบบนของกระดาน (boardY < 0) หรือไม่
+ * ใช้สำหรับตรวจจับเงื่อนไข Lock-Out ตามกฎ Tetris เมื่อชิ้นส่วนล็อกติดกระดาน
+ *
+ * @param piece ชิ้นส่วน Tetromino ที่ต้องการตรวจสอบ
+ * @returns boolean คืนค่า true หากมี cell ใด cell หนึ่งอยู่เหนือแถว 0 (y < 0)
+ */
+export function hasCellsAboveBoard(piece: ActivePiece): boolean {
+  const { shape, position } = piece;
+
+  for (let r = 0; r < shape.length; r++) {
+    const shapeRow = shape[r];
+    if (!shapeRow) continue;
+
+    for (let c = 0; c < shapeRow.length; c++) {
+      const cell = shapeRow[c];
+      if (!cell) continue;
+
+      const boardY = position.y + r;
+      if (boardY < 0) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+/**
  * สั่งให้ล็อกชิ้นส่วนลงบน board ทันที เคลียร์สถานะ lock delay และเรียก spawn ชิ้นส่วนใหม่ (C5)
  */
 export function performLock(state: MovementState): ActionResult {
@@ -148,11 +175,19 @@ export function performLock(state: MovementState): ActionResult {
     return { success: true, linesCleared: [], gameOver: state.gameOver ?? false };
   }
 
+  // หากชิ้นส่วนมีบล็อกอยู่เหนือกระดาน (boardY < 0) ถือเป็น Lock-Out (Game Over)
+  if (hasCellsAboveBoard(state.activePiece)) {
+    state.gameOver = true;
+  }
+
   // เรียก applyLock pipeline ที่ทำงานแบบ pure/immutable
   const nextState = applyLock(state);
 
-  // Single point of mutation: อัปเดต state กลับเข้า engine ที่จุดเดียว ณ ขอบของระบบ
+  // Apply the pure transition before spawning on the original state owner.
   Object.assign(state, nextState);
+  if (!state.gameOver) {
+    state.spawnNextPiece?.();
+  }
 
   return {
     success: true,
@@ -335,26 +370,15 @@ export function softDrop<T extends MovementState = MovementState>(state: T): Mov
   // ตรวจสอบสถานะการแตะพื้นหลังการตกลงมา 1 ช่อง
   let lockResult: ActionResult | null = null;
   if (isPieceOnGround(state.board, state.activePiece)) {
-    if (!state.isLocking) {
-      startLockTimer(state);
-    } else {
-      const nextResets = (state.lockResets ?? 0) + 1;
-      state.lockResets = nextResets;
-      if (nextResets >= MAX_LOCK_RESETS) {
-        lockResult = performLock(state);
-        state.onLock?.(lockResult);
-      } else {
-        restartLockTimer(state);
-      }
-    }
+    startLockTimer(state);
   } else {
     cancelLockTimer(state);
   }
 
   return {
     success: true,
-    linesCleared: lockResult ? lockResult.linesCleared : [],
-    gameOver: lockResult ? lockResult.gameOver : (state.gameOver ?? false),
+    linesCleared: [],
+    gameOver: state.gameOver ?? false,
     state,
   };
 }

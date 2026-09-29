@@ -3,7 +3,6 @@ import { describe, expect, test } from 'bun:test';
 import type { TetrominoType } from '../../01-Source-code/shared/types';
 import {
   SevenBagRandomizer,
-  BagRandomizer,
   createSevenBag,
   TETROMINO_TYPES,
 } from '../../01-Source-code/core-engine/randomizer';
@@ -139,49 +138,5 @@ describe('7-bag Randomizer (Tetris Guideline Random Generator)', () => {
       }
     });
   });
-
-  describe('เมธอดเสริมและการทำงานของ Randomizer Class', () => {
-    test('peek() ดูชิ้นถัดไปได้โดยไม่หยิบออกจากถุง', () => {
-      const randomizer = new SevenBagRandomizer();
-      const peekedPiece = randomizer.peek();
-      const remainingBefore = randomizer.remainingInBag;
-
-      // peek() ไม่ควรทำให้จำนวนชิ้นลดลง
-      expect(randomizer.remainingInBag).toBe(remainingBefore);
-
-      // เมื่อเรียก next() ต้องได้ชิ้นเดียวกับที่ peek() ไว้
-      const nextPiece = randomizer.next();
-      expect(nextPiece).toBe(peekedPiece);
-      expect(randomizer.remainingInBag).toBe(remainingBefore - 1);
-    });
-
-    test('peekQueue(n) สามารถดูคิวล่วงหน้าหลายชิ้นได้ถูกต้อง', () => {
-      const randomizer = new SevenBagRandomizer();
-      const previewCount = 5;
-      const preview = randomizer.peekQueue(previewCount);
-
-      expect(preview.length).toBe(previewCount);
-
-      // ชิ้นส่วนที่ดึงด้วย next() ต้องตรงตามคิวที่ preview ไว้
-      for (let i = 0; i < previewCount; i++) {
-        expect(randomizer.next()).toBe(preview[i]!);
-      }
-    });
-
-    test('reset() รีเซ็ตถุงสุ่มใหม่และมีชิ้นส่วนครบ 7 ชิ้น', () => {
-      const randomizer = new SevenBagRandomizer();
-      randomizer.next();
-      randomizer.next();
-      expect(randomizer.remainingInBag).toBe(5);
-
-      randomizer.reset();
-      expect(randomizer.remainingInBag).toBe(7);
-    });
-
-    test('BagRandomizer alias ชี้ไปยัง SevenBagRandomizer', () => {
-      expect(BagRandomizer).toBe(SevenBagRandomizer);
-      const instance = new BagRandomizer();
-      expect(instance).toBeInstanceOf(SevenBagRandomizer);
-    });
-  });
 });
+

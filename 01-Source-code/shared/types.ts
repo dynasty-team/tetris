@@ -17,7 +17,7 @@ export type CellValue = 0 | TetrominoType;
 /** Board[y][x] — ขนาด 20 แถว x 10 คอลัมน์ (row-major, y=0 คือแถวบนสุด) */
 export type Board = CellValue[][];
 
-/** ตำแหน่งอ้างอิงบน board */
+/** ตำแหหหน่งอ้างอิงบน board */
 export interface Position {
   /** คอลัมน์ 0-9 */
   x: number;
@@ -127,6 +127,14 @@ export interface CoreEngine {
   tick(): ActionResult;
   /** เรียกหลัง piece ก่อนหน้า lock ติด board */
   spawnNextPiece(): ActionResult;
+  /** คืน active piece ปัจจุบัน หรือ null หากยังไม่มี */
+  getActivePiece(): ActivePiece | null;
+  /** ลงทะเบียน callback ที่ถูกเรียกเมื่อ lock delay ล็อกชิ้นส่วน */
+  setLockCallback(callback: ((result: ActionResult) => void) | null): void;
+  /** หยุด lock delay และคืน true หากก่อนหน้านี้กำลังนับเวลาอยู่ */
+  pauseLockTimer(): boolean;
+  /** กลับมาเริ่ม lock delay หาก active piece ยังแตะพื้น */
+  resumeLockTimer(): void;
   getRenderSnapshot(): RenderSnapshot;
   getScore(): number;
   getLevel(): number;
