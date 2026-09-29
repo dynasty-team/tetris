@@ -62,18 +62,24 @@ function createLockPipelineState(): MovementState {
 }
 
 describe('Movement & Lock Delay System (C4)', () => {
-  test('pipe(lockActivePieceToBoardStep, clearFullLinesStep, spawnNextPieceStep) ให้ผลตรงกับเรียกทีละขั้นเอง และทำงานแบบ Pure/Immutable', () => {
+  test('applyLock() ทำเฉพาะ lock และ clear แบบ Pure/Immutable โดยไม่ spawn ชิ้นส่วนแฝง', () => {
     const baseState = createLockPipelineState();
-    const spawnNextPiece = () => ({ success: true, linesCleared: [], gameOver: false });
+    let spawnCalls = 0;
+    const spawnNextPiece = () => {
+      spawnCalls++;
+      return { success: true, linesCleared: [], gameOver: false };
+    };
     const stateA = { ...baseState, spawnNextPiece };
     const stateB = structuredClone(baseState);
     stateB.spawnNextPiece = spawnNextPiece;
 
     const resultA = applyLock(stateA);
+    expect(spawnCalls).toBe(0);
 
     const step1 = lockActivePieceToBoardStep(stateB);
     const step2 = clearFullLinesStep(step1);
     const resultB = spawnNextPieceStep(step2);
+    expect(spawnCalls).toBe(1);
 
     expect(resultA.board).toEqual(resultB.board);
     expect(resultA.linesClearedTotal).toEqual(resultB.linesClearedTotal);
@@ -545,6 +551,34 @@ describe('Movement & Lock Delay System (C4)', () => {
       // ชิ้นส่วนใหม่ (O) spawn ทันที และ isLocking เป็น false
       expect(snapshot.activePiece.type).toBe('O');
       expect(snapshot.isLocking).toBe(false);
+    });
+
+    test('hardDrop() spawns a grounded next piece whose lock timer updates the real engine', async () => {
+      let board = createEmptyBoard();
+      for (let column = 2; column <= 7; column++) {
+        board[2]![column] = 'T';
+      }
+
+      const engine = new TetrisEngine(undefined, board);
+      engine.nextPiece = 'I';
+      engine.setActivePiece(createTestPiece('O', 0, 17));
+      let onLockCalls = 0;
+      engine.onLock = () => {
+        onLockCalls++;
+      };
+
+      engine.hardDrop();
+
+      expect(engine.getActivePiece()?.type).toBe('I');
+      expect(engine.isLocking).toBe(true);
+      expect(engine.lockTimer).not.toBeNull();
+
+      await new Promise((resolve) => setTimeout(resolve, LOCK_DELAY_MS + 50));
+
+      expect(engine.getBoard()[1]?.slice(3, 7)).toEqual(['I', 'I', 'I', 'I']);
+      expect(engine.isLocking).toBe(false);
+      expect(engine.lockTimer).toBeNull();
+      expect(onLockCalls).toBe(1);
     });
   });
 
