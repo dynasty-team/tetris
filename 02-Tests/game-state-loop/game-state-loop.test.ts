@@ -12,6 +12,8 @@ class MockEngine implements CoreEngine {
   public gameOver = false;
   public movesCalled: string[] = [];
   public lastActionResult: ActionResult = { success: true, linesCleared: [], gameOver: false };
+  private lockCallback: ((result: ActionResult) => void) | null = null;
+  private lockPaused = false;
 
   public moveLeft(): ActionResult {
     this.movesCalled.push('moveLeft');
@@ -41,6 +43,12 @@ class MockEngine implements CoreEngine {
     this.movesCalled.push('spawnNextPiece');
     return this.lastActionResult;
   }
+  public getActivePiece() { return mockRenderSnapshot.activePiece; }
+  public setLockCallback(callback: ((result: ActionResult) => void) | null): void { this.lockCallback = callback; }
+  public pauseLockTimer(): boolean { const wasPaused = this.lockPaused; this.lockPaused = false; return wasPaused; }
+  public resumeLockTimer(): void { this.lockPaused = true; }
+  public emitLock(result: ActionResult): void { this.lockCallback?.(result); }
+  public hasLockCallback(): boolean { return this.lockCallback !== null; }
   public getRenderSnapshot(): RenderSnapshot {
     return {
       ...mockRenderSnapshot,
@@ -235,13 +243,10 @@ describe('GameStateLoop Orchestrator', () => {
     });
     await loop.start();
 
-    const onLock = (engine as MockEngine & {
-      onLock?: (result: ActionResult) => void;
-    }).onLock;
-    expect(onLock).toBeDefined();
+    expect(engine.hasLockCallback()).toBe(true);
 
     engine.linesClearedTotal = 2;
-    onLock!({
+    engine.emitLock({
       success: true,
       linesCleared: [18, 19],
       gameOver: false,
@@ -261,18 +266,15 @@ describe('GameStateLoop Orchestrator', () => {
     });
     await loop.start();
 
-    const onLock = (engine as MockEngine & {
-      onLock?: (result: ActionResult) => void;
-    }).onLock!;
     loop.pause();
     const pausedRenderCount = renderCount;
-    onLock({ success: true, linesCleared: [], gameOver: false });
+    engine.emitLock({ success: true, linesCleared: [], gameOver: false });
     expect(renderCount).toBe(pausedRenderCount);
 
     loop.resume();
     loop.stop();
     const stoppedRenderCount = renderCount;
-    onLock({ success: true, linesCleared: [], gameOver: false });
+    engine.emitLock({ success: true, linesCleared: [], gameOver: false });
     expect(renderCount).toBe(stoppedRenderCount);
   });
 
@@ -284,10 +286,7 @@ describe('GameStateLoop Orchestrator', () => {
     });
     await loop.start();
 
-    const onLock = (engine as MockEngine & {
-      onLock?: (result: ActionResult) => void;
-    }).onLock!;
-    onLock({ success: false, linesCleared: [], gameOver: true });
+    engine.emitLock({ success: false, linesCleared: [], gameOver: true });
 
     expect(loop.isRunning()).toBe(false);
     expect(renderedStatus).toBe('gameover');

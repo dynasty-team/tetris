@@ -406,9 +406,9 @@ describe('Movement & Lock Delay System (C4)', () => {
     test('หมุน piece บนกระดานที่เกือบเต็ม 2 แถว ครบ 15 ครั้ง -> ActionResult.linesCleared ไม่ว่าง และ onLock ถูกเรียกถูกต้อง', () => {
       const engine = new TetrisEngine();
       let onLockCalledWith = null as ActionResult | null;
-      engine.onLock = (result) => {
+      engine.setLockCallback((result) => {
         onLockCalledWith = result;
-      };
+      });
 
       // สร้างกระดานที่เกือบเต็ม 2 แถวล่าง (แถว 18 และ 19)
       // เว้นช่องตรงกลาง x=4, x=5 ไว้สำหรับ O piece (ขนาด 2x2)
@@ -452,9 +452,9 @@ describe('Movement & Lock Delay System (C4)', () => {
     test('หมุน piece บนกระดานที่เกือบเต็ม 1 แถว ครบ 15 ครั้ง -> ActionResult.linesCleared ไม่ว่าง และ onLock ถูกเรียกถูกต้อง', () => {
       const engine = new TetrisEngine();
       let onLockCalledWith = null as ActionResult | null;
-      engine.onLock = (result) => {
+      engine.setLockCallback((result) => {
         onLockCalledWith = result;
-      };
+      });
 
       // สร้างแถว 19 เกือบเต็ม เว้น x=4, 5 สำหรับ O piece (2x2)
       let board = createEmptyBoard();
@@ -509,10 +509,25 @@ describe('Movement & Lock Delay System (C4)', () => {
   });
 
   describe('4. Lock Delay Timeout & Auto Lock', () => {
+    test('pauseLockTimer() และ resumeLockTimer() ควบคุม lock delay โดยไม่เปิดเผย timer ภายใน', () => {
+      const engine = new TetrisEngine();
+      engine.setActivePiece(createTestPiece('T', 4, 18));
+
+      expect(engine.hasActiveLockTimer()).toBe(true);
+      expect(engine.pauseLockTimer()).toBe(true);
+      expect(engine.hasActiveLockTimer()).toBe(false);
+      expect(engine.isLocking).toBe(false);
+
+      engine.resumeLockTimer();
+      expect(engine.hasActiveLockTimer()).toBe(true);
+      expect(engine.isLocking).toBe(true);
+      engine.pauseLockTimer();
+    });
+
     test('เมื่อครบเวลา 500ms (LOCK_DELAY_MS) โดยไม่มีการขยับเพิ่ม ชิ้นส่วนจะล็อกลงกระดานและ spawn ใหม่ทันที', async () => {
       const engine = new TetrisEngine();
       // กำหนด next piece เพื่อตรวจสอบการ spawn
-      engine.nextPiece = 'I';
+      engine.setNextPieceForTesting('I');
       engine.setActivePiece(createTestPiece('T', 4, 18));
 
       expect(engine.getRenderSnapshot().isLocking).toBe(true);
@@ -536,7 +551,7 @@ describe('Movement & Lock Delay System (C4)', () => {
   describe('5. Hard Drop & Immediate Lock', () => {
     test('hardDrop() ข้าม lock delay ทิ้งตัวลงพื้นและล็อกทันที', () => {
       const engine = new TetrisEngine();
-      engine.nextPiece = 'O';
+      engine.setNextPieceForTesting('O');
       engine.setActivePiece(createTestPiece('T', 4, 0));
 
       const result = engine.hardDrop();
@@ -560,24 +575,24 @@ describe('Movement & Lock Delay System (C4)', () => {
       }
 
       const engine = new TetrisEngine(undefined, board);
-      engine.nextPiece = 'I';
+      engine.setNextPieceForTesting('I');
       engine.setActivePiece(createTestPiece('O', 0, 17));
       let onLockCalls = 0;
-      engine.onLock = () => {
+      engine.setLockCallback(() => {
         onLockCalls++;
-      };
+      });
 
       engine.hardDrop();
 
       expect(engine.getActivePiece()?.type).toBe('I');
       expect(engine.isLocking).toBe(true);
-      expect(engine.lockTimer).not.toBeNull();
+      expect(engine.hasActiveLockTimer()).toBe(true);
 
       await new Promise((resolve) => setTimeout(resolve, LOCK_DELAY_MS + 50));
 
       expect(engine.getBoard()[1]?.slice(3, 7)).toEqual(['I', 'I', 'I', 'I']);
       expect(engine.isLocking).toBe(false);
-      expect(engine.lockTimer).toBeNull();
+      expect(engine.hasActiveLockTimer()).toBe(false);
       expect(onLockCalls).toBe(1);
     });
   });
@@ -630,9 +645,13 @@ describe('Movement & Lock Delay System (C4)', () => {
   describe('7. Game Over / Top-Out Protection', () => {
     test('ไม่สามารถขยับชิ้นส่วนได้หากสถานะ gameOver เป็น true', () => {
       const engine = new TetrisEngine();
-      engine.setActivePiece(createTestPiece('T', 4, 5));
-      // บังคับ gameOver
-      engine.gameOver = true;
+      const blockedSpawnBoard = createEmptyBoard();
+      for (let y = 0; y < 4; y++) {
+        blockedSpawnBoard[y]!.fill('O');
+      }
+      engine.setBoard(blockedSpawnBoard);
+      engine.spawnNextPiece();
+      expect(engine.isGameOver()).toBe(true);
 
       const leftRes = engine.moveLeft();
       expect(leftRes.success).toBe(false);

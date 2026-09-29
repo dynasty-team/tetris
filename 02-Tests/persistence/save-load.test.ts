@@ -4,21 +4,37 @@ import { describe, expect, test, beforeEach, afterEach } from 'bun:test';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { saveGame, loadGame, validateSaveData, CURRENT_SAVE_VERSION } from '../../01-Source-code/persistence';
-import type { SaveData, CoreEngine, ActionResult } from '../../01-Source-code/shared/types';
+import type { SaveData, CoreEngine, ActionResult, RenderSnapshot } from '../../01-Source-code/shared/types';
 import { GameStateLoop } from '../../01-Source-code/game-state-loop';
+import { mockRenderSnapshot } from '../../01-Source-code/shared/mock-engine';
 
 const TEST_DIR = path.resolve(__dirname, 'test-temp-persistence');
 const TEST_SAVE_FILE = path.join(TEST_DIR, 'test-save.json');
 
-class TestEngine {
+class TestEngine implements CoreEngine {
   public highScore = 0
   public score = 0;
   public level = 1;
   public linesClearedTotal = 0;
   public gameOver = false;
+  private lockCallback: ((result: ActionResult) => void) | null = null;
 
+  public moveLeft(): ActionResult { return this.tick(); }
+  public moveRight(): ActionResult { return this.tick(); }
+  public softDrop(): ActionResult { return this.tick(); }
+  public rotate(): ActionResult { return this.tick(); }
+  public hardDrop(): ActionResult { return this.tick(); }
   public tick(): ActionResult { return { success: true, linesCleared: [], gameOver: this.gameOver }; }
+  public spawnNextPiece(): ActionResult { return this.tick(); }
+  public getActivePiece() { return mockRenderSnapshot.activePiece; }
+  public setLockCallback(callback: ((result: ActionResult) => void) | null): void { this.lockCallback = callback; }
+  public pauseLockTimer(): boolean { return false; }
+  public resumeLockTimer(): void {}
+  public getRenderSnapshot(): RenderSnapshot { return { ...mockRenderSnapshot, score: this.score, level: this.level, highScore: this.highScore, linesClearedTotal: this.linesClearedTotal }; }
+  public addScore(points: number): void { this.score += points; }
+  public setLevel(level: number): void { this.level = level; }
   public setHighScore(hs: number): void { this.highScore = hs; }
+  public getHighScore(): number { return this.highScore; }
   public getScore(): number { return this.score; }
   public getLevel(): number { return this.level; }
   public isGameOver(): boolean { return this.gameOver; }
@@ -178,7 +194,7 @@ describe('Persistence - saveGame & loadGame', () => {
     engine.linesClearedTotal = 12;
 
     const loop = new GameStateLoop({
-      engine: engine as unknown as CoreEngine,
+      engine,
       onLoad: () => null,
       onSave: async (data) => {
         savedDataReceived = data;
@@ -211,7 +227,7 @@ describe('Persistence - saveGame & loadGame', () => {
     engine.linesClearedTotal = 3;
 
     const loop = new GameStateLoop({
-      engine: engine as unknown as CoreEngine,
+      engine,
       onLoad: () => null,
       onSave: async (data) => {
         savedDataReceived = data;
@@ -238,7 +254,7 @@ describe('Persistence - saveGame & loadGame', () => {
 
     // ไม่ได้ส่ง onSave แต่ส่ง saveFilePath เข้าไป
     const loop = new GameStateLoop({
-      engine: engine as unknown as CoreEngine,
+      engine,
       saveFilePath: TEST_SAVE_FILE,
     });
 

@@ -11,8 +11,6 @@ import type {
 import { saveGame, loadGame } from '../persistence';
 import { calculateScore } from './score';
 import { calculateLevel, getSpeedForLevel } from './level';
-import { cancelLockTimer, startLockTimer } from '../core-engine/movement';
-import type { MovementState } from '../core-engine/movement';
 
 /**
  * ตัวเลือกสำหรับการตั้งค่า GameStateLoop (Dependency Injection)
@@ -67,10 +65,6 @@ export class GameStateLoop {
     this.saveFilePath = options.saveFilePath;
     this.onSave = options.onSave ?? ((data: SaveData) => saveGame(data, this.saveFilePath));
     this.onLoad = options.onLoad ?? (() => loadGame(this.saveFilePath));
-    const lockAwareEngine = this.engine as CoreEngine & {
-      onLock?: (result: ActionResult) => void;
-    };
-    lockAwareEngine.onLock = (result) => this.handleLockedResult(result);
   }
 
   /**
@@ -85,25 +79,15 @@ export class GameStateLoop {
     this.saveTriggered = false;
     this.wasLockingBeforePause = false;
     this.lockHandledDuringAction = false;
+    this.engine.setLockCallback((result) => this.handleLockedResult(result));
 
     // โหลด high score จาก persistence layer และตั้งค่าให้ engine
     this.loadedSaveData = await this.loadGame();
     this.hasLoadedSaveData = true;
-    const highScoreEngine = this.engine as CoreEngine & {
-      setHighScore?: (highScore: number) => void;
-    };
-    highScoreEngine.setHighScore?.(this.loadedSaveData?.highScore ?? 0);
+    this.engine.setHighScore(this.loadedSaveData?.highScore ?? 0);
 
     // หากกระดานยังไม่มี active piece ให้ spawn ชิ้นแรกเตรียมไว้
-    const engineTarget = this.engine as unknown as {
-      getActivePiece?: () => unknown;
-      activePiece?: unknown;
-    };
-    if (typeof engineTarget.getActivePiece === 'function') {
-      if (engineTarget.getActivePiece() === null) {
-        this.engine.spawnNextPiece();
-      }
-    } else if ('activePiece' in engineTarget && engineTarget.activePiece === null) {
+    if (this.engine.getActivePiece() === null) {
       this.engine.spawnNextPiece();
     }
 
@@ -141,10 +125,7 @@ export class GameStateLoop {
       this.input.stop();
     }
 
-    const lockAwareEngine = this.engine as CoreEngine & {
-      onLock?: (result: ActionResult) => void;
-    };
-    lockAwareEngine.onLock = undefined;
+    this.engine.setLockCallback(null);
 
     this.onStop?.();
     this.triggerSave();
@@ -159,16 +140,7 @@ export class GameStateLoop {
     this.paused = true;
     this.clearTickTimer();
 
-    const lockAwareEngine = this.engine as unknown as {
-      lockTimer?: ReturnType<typeof setTimeout> | null;
-      isLocking?: boolean;
-    };
-    if (lockAwareEngine.lockTimer || lockAwareEngine.isLocking) {
-      this.wasLockingBeforePause = true;
-      this.clearLockTimer();
-    } else {
-      this.wasLockingBeforePause = false;
-    }
+    this.wasLockingBeforePause = this.engine.pauseLockTimer();
 
     this.render();
   }
@@ -184,16 +156,7 @@ export class GameStateLoop {
 
     if (this.wasLockingBeforePause) {
       this.wasLockingBeforePause = false;
-      const engineTarget = this.engine as unknown as {
-        board?: unknown;
-        activePiece?: unknown;
-        startLockTimer?: () => void;
-      };
-      if (typeof engineTarget.startLockTimer === 'function') {
-        engineTarget.startLockTimer();
-      } else if (engineTarget.board && engineTarget.activePiece) {
-        startLockTimer(this.engine as unknown as MovementState);
-      }
+      this.engine.resumeLockTimer();
     }
 
     this.scheduleTick();
@@ -460,16 +423,7 @@ export class GameStateLoop {
    * ล้าง timer ของ lock delay ใน engine
    */
   private clearLockTimer(): void {
-    const lockAwareEngine = this.engine as unknown as {
-      lockTimer?: ReturnType<typeof setTimeout> | null;
-      isLocking?: boolean;
-      cancelLockTimer?: () => void;
-    };
-    if (typeof lockAwareEngine.cancelLockTimer === 'function') {
-      lockAwareEngine.cancelLockTimer();
-    } else {
-      cancelLockTimer(lockAwareEngine as MovementState);
-    }
+    this.engine.pauseLockTimer();
   }
 
   /**
