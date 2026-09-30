@@ -46,12 +46,23 @@ tetris/
 │   └── sample.test.ts
 │
 ├── 03-Documentation/
+│   ├── Architecture.md
 │   ├── classdiagram.md
-│   └── decision-log.md
+│   ├── CodeMap.md
+│   ├── decision-log.md
+│   ├── GameRules.md
+│   ├── KnownLimitations.md
+│   └── Requirements.md
 │
+│   
 ├── 04-Demo/
-│   ├── .gitkeep
-│   └── tetris-demo.mp4
+│   ├── FileGIF-Demo/
+│   │   ├── 1.gif
+│   │   ├── 2.gif
+│   │   ├── 3.gif
+│   │   └── 4.gif
+│   └── demo.md
+│
 ├── index.ts
 ├── package.json
 ├── tsconfig.json

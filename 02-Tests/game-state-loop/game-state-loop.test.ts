@@ -21,6 +21,9 @@ import type {
 const TEST_DIR = path.resolve(__dirname, 'test-temp-gameloop');
 const TEST_SAVE_FILE = path.join(TEST_DIR, 'test-save.json');
 
+const TEST_DIR = path.resolve(__dirname, 'test-temp-gameloop');
+const TEST_SAVE_FILE = path.join(TEST_DIR, 'test-save.json');
+
 class MockEngine implements CoreEngine {
   public score = 0;
   public highScore = 0;
