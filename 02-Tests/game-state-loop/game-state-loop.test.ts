@@ -708,4 +708,22 @@ describe('GameStateLoop Integration with real TetrisEngine', () => {
     loop.stop();
     expect(loop.isRunning()).toBe(false);
   });
+
+  test('Gravity tick ทำงานอัตโนมัติผ่าน timer เมื่อครบเวลา delay', async () => {
+    const engine = new MockEngine();
+    engine.setLevel(10); // getSpeedForLevel(10) = 100ms
+    const loop = new GameStateLoop({
+      engine,
+      saveFilePath: TEST_SAVE_FILE,
+    });
+
+    await loop.start();
+    const initialTicks = engine.movesCalled.filter((m) => m === 'tick').length;
+
+    // รอให้ timer ของ scheduleTick ทำงาน (100ms delay)
+    await new Promise((resolve) => setTimeout(resolve, 150));
+
+    expect(engine.movesCalled.filter((m) => m === 'tick').length).toBeGreaterThan(initialTicks);
+    loop.stop();
+  });
 });
