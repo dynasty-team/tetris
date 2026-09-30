@@ -1,6 +1,6 @@
 // 02-Tests/core-engine/collision.test.ts
 import { describe, expect, test } from 'bun:test';
-import type { Board, ActivePiece, TetrominoType } from '../../01-Source-code/shared/types';
+import type { ActivePiece, TetrominoType } from '../../01-Source-code/shared/types';
 import { createEmptyBoard, setCell } from '../../01-Source-code/shared/board-utils';
 import { checkCollision } from '../../01-Source-code/core-engine/collision';
 import { getShape, rotatePiece } from '../../01-Source-code/core-engine/tetromino-shapes';

@@ -7,7 +7,7 @@
 import type { Board, ActivePiece, ActionResult, TetrominoType } from '../shared/types';
 import { LOCK_DELAY_MS, MAX_LOCK_RESETS } from '../shared/constants';
 import { checkCollision } from './collision';
-import { rotatePiece, getShape } from './tetromino-shapes';
+import { rotatePiece } from './tetromino-shapes';
 import { applyLock } from './lock-pipeline';
 import { getWallKickOffsets } from './wall-kick-data';
 
@@ -368,7 +368,6 @@ export function softDrop<T extends MovementState = MovementState>(state: T): Mov
   state.activePiece = candidatePiece;
 
   // ตรวจสอบสถานะการแตะพื้นหลังการตกลงมา 1 ช่อง
-  let lockResult: ActionResult | null = null;
   if (isPieceOnGround(state.board, state.activePiece)) {
     startLockTimer(state);
   } else {
