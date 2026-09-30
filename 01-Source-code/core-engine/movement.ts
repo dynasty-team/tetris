@@ -368,7 +368,6 @@ export function softDrop<T extends MovementState = MovementState>(state: T): Mov
   state.activePiece = candidatePiece;
 
   // ตรวจสอบสถานะการแตะพื้นหลังการตกลงมา 1 ช่อง
-  let lockResult: ActionResult | null = null;
   if (isPieceOnGround(state.board, state.activePiece)) {
     startLockTimer(state);
   } else {

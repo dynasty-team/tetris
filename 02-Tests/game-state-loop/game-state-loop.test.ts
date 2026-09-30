@@ -17,7 +17,6 @@ import type {
   InputSource,
   ActivePiece,
 } from '../../01-Source-code/shared/types';
-import { mockRenderSnapshot } from '../../01-Source-code/shared/mock-engine';
 
 const TEST_DIR = path.resolve(__dirname, 'test-temp-gameloop');
 const TEST_SAVE_FILE = path.join(TEST_DIR, 'test-save.json');
@@ -61,7 +60,19 @@ class MockEngine implements CoreEngine {
     this.movesCalled.push('spawnNextPiece');
     return this.lastActionResult;
   }
-  public getActivePiece() { return mockRenderSnapshot.activePiece; }
+  private activePiece: ActivePiece = {
+    type: 'T',
+    position: { x: 4, y: 0 },
+    rotation: 0,
+    shape: [
+      [0, 1, 0, 0],
+      [1, 1, 1, 0],
+      [0, 0, 0, 0],
+      [0, 0, 0, 0],
+    ],
+  };
+
+  public getActivePiece(): ActivePiece | null { return this.activePiece; }
   public setLockCallback(callback: ((result: ActionResult) => void) | null): void { this.lockCallback = callback; }
   public pauseLockTimer(): boolean { const wasPaused = this.lockPaused; this.lockPaused = false; return wasPaused; }
   public resumeLockTimer(): void { this.lockPaused = true; }
@@ -69,11 +80,15 @@ class MockEngine implements CoreEngine {
   public hasLockCallback(): boolean { return this.lockCallback !== null; }
   public getRenderSnapshot(): RenderSnapshot {
     return {
-      ...mockRenderSnapshot,
+      board: createEmptyBoard(),
+      activePiece: this.activePiece,
+      nextPiece: 'I',
       score: this.score,
       level: this.level,
+      highScore: this.highScore,
       linesClearedTotal: this.linesClearedTotal,
       status: this.gameOver ? 'gameover' : 'playing',
+      isLocking: false,
     };
   }
   public getScore(): number { return this.score; }
