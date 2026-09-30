@@ -2,7 +2,7 @@
 import { describe, expect, test, beforeEach, afterEach } from 'bun:test';
 import { GameStateLoop } from '../../01-Source-code/game-state-loop/GameStateLoop';
 import { CURRENT_SAVE_VERSION } from '../../01-Source-code/persistence/schema';
-import type { CoreEngine, ActionResult, RenderSnapshot, GameAction, SaveData } from '../../01-Source-code/shared/types';
+import type { CoreEngine, ActionResult, RenderSnapshot, GameAction, SaveData, InputSource } from '../../01-Source-code/shared/types';
 import { mockRenderSnapshot } from '../../01-Source-code/shared/mock-engine';
 
 class MockEngine implements CoreEngine {
@@ -67,6 +67,25 @@ class MockEngine implements CoreEngine {
   public addScore(points: number): void { this.score += points; }
   public setLevel(lvl: number): void { this.level = lvl; }
   public getLinesClearedTotal(): number { return this.linesClearedTotal; }
+}
+
+class MockInput implements InputSource {
+  public started = false;
+  private onAction: ((action: GameAction) => void) | null = null;
+
+  public start(onAction: (action: GameAction) => void): void {
+    this.started = true;
+    this.onAction = onAction;
+  }
+
+  public stop(): void {
+    this.started = false;
+    this.onAction = null;
+  }
+
+  public emit(action: GameAction): void {
+    this.onAction?.(action);
+  }
 }
 
 describe('GameStateLoop Orchestrator', () => {
@@ -164,9 +183,11 @@ describe('GameStateLoop Orchestrator', () => {
   test('handleAction(QUIT) สั่งหยุด loop และ trigger save', async () => {
     let saved = false;
     let stopCount = 0;
+    const input = new MockInput();
     engine.score = 1;
     const loop = new GameStateLoop({
       engine,
+      input,
       onLoad: () => null,
       onSave: () => { saved = true; },
       onStop: () => { stopCount++; },
@@ -178,6 +199,7 @@ describe('GameStateLoop Orchestrator', () => {
     expect(loop.isRunning()).toBe(false);
     expect(saved).toBe(true);
     expect(stopCount).toBe(1);
+    expect(input.started).toBe(false);
     loop.stop();
     expect(stopCount).toBe(1);
   });
@@ -301,6 +323,43 @@ describe('GameStateLoop Orchestrator', () => {
     engine.emitLock({ success: false, linesCleared: [], gameOver: true });
 
     expect(loop.isRunning()).toBe(false);
+    expect(renderedStatus).toBe('gameover');
+  });
+
+  test('Game Over คงหน้าจอและรับปุ่มออกก่อนล้างทรัพยากรทั้งหมด', async () => {
+    const input = new MockInput();
+    let renderedStatus = '';
+    let stopCount = 0;
+    const loop = new GameStateLoop({
+      engine,
+      input,
+      renderer: (snapshot) => { renderedStatus = snapshot.status; },
+      onLoad: () => null,
+      onStop: () => { stopCount++; },
+    });
+    await loop.start();
+
+    engine.gameOver = true;
+    engine.lastActionResult = {
+      success: false,
+      linesCleared: [],
+      gameOver: true,
+    };
+    loop.tick();
+
+    expect(loop.isRunning()).toBe(false);
+    expect(renderedStatus).toBe('gameover');
+    expect(input.started).toBe(true);
+    expect(engine.hasLockCallback()).toBe(false);
+    expect(stopCount).toBe(0);
+
+    input.emit('MOVE_LEFT');
+    expect(engine.movesCalled).not.toContain('moveLeft');
+    expect(renderedStatus).toBe('gameover');
+
+    input.emit('QUIT');
+    expect(input.started).toBe(false);
+    expect(stopCount).toBe(1);
     expect(renderedStatus).toBe('gameover');
   });
 
