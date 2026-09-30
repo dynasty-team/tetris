@@ -87,6 +87,7 @@ bun test
 - ฟา — Documentation
 - ซอ,นอส — Core Engine
 - เจ๋ง,ปาล์ม — Game State Loop
+- ทอส,เกม — I/O Rendering
 - ภูมิ — Persistence
 - กาย — Testing
 
