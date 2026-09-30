@@ -5,7 +5,7 @@
 // ไม่เปลี่ยนแปลง (mutate) ข้อมูลใน Board ต้นฉบับ และคืนกระดานชุดใหม่เสมอ
 
 import type { Board, CellValue } from '../shared/types';
-import { BOARD_WIDTH, BOARD_HEIGHT } from '../shared/constants';
+import { BOARD_WIDTH } from '../shared/constants';
 
 /**
  * ผลลัพธ์จากการตรวจสอบและลบแถวที่เต็ม

@@ -1,21 +1,15 @@
 import React from "react";
 import { Box, Text, useWindowSize, render as inkRender } from "ink";
-import { isInBounds } from "../shared/board-utils";
 import { getShape } from "../core-engine/tetromino-shapes";
 import { lockPieceToBoard } from "../core-engine/movement";
 
-import type {
-    ActivePiece,
+import type {   
     RenderSnapshot,
     Board,
     CellValue,
     TetrominoType
 } from "../shared/types";
 
-import {
-    BOARD_WIDTH,
-    BOARD_HEIGHT
-} from "../shared/constants";
 
 import {
     MIN_TERMINAL_WIDTH,
