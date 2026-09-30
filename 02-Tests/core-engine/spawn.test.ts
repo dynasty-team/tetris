@@ -29,6 +29,14 @@ describe('spawnNextPiece() - ระบบสร้างชิ้นส่วน
       expect(engine.getLevel()).toBe(1);
       expect(engine.getBoard().length).toBe(20);
       expect(engine.getRandomizer()).toBeInstanceOf(SevenBagRandomizer);
+      expect(engine.board.length).toBe(20);
+      expect(engine.activePiece).toBeNull();
+      expect(engine.linesClearedTotal).toBe(0);
+      expect(engine.nextPiece).toBe(engine.getNextPiece());
+      expect(engine.gameOver).toBe(false);
+      expect(engine.isLocking).toBe(false);
+      expect(engine.lockResets).toBe(0);
+      expect(engine.lastClearedLines).toEqual([]);
     });
 
     test('spawn piece บน empty board คืน success: true, gameOver: false', () => {
@@ -42,6 +50,7 @@ describe('spawnNextPiece() - ระบบสร้างชิ้นส่วน
       // ชิ้นส่วน activePiece ต้องถูกสร้างขึ้นและวางที่ตำแหน่ง spawn มาตรฐาน { x: 3, y: 0 }
       const activePiece = engine.getActivePiece();
       expect(activePiece).not.toBeNull();
+      expect(engine.activePiece).toEqual(activePiece);
       expect(activePiece?.position).toEqual(DEFAULT_SPAWN_POSITION);
       expect(activePiece?.rotation).toBe(0);
       expect(engine.isGameOver()).toBe(false);

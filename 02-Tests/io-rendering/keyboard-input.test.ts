@@ -162,4 +162,15 @@ describe('KeyboardInput (KeyboardInput.ts)', () => {
       exitSpy.mockRestore();
     }
   });
+
+  test('exit event หยุด keyboard ได้อย่างถูกต้อง', () => {
+    const mockInput = new MockInputStream([]);
+    const keyboard = new KeyboardInput({ input: mockInput });
+
+    keyboard.start(() => {});
+    process.emit('exit', 0);
+
+    expect(mockInput.isCancelled).toBe(true);
+    keyboard.stop();
+  });
 });
