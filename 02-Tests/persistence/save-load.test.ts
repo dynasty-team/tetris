@@ -4,20 +4,29 @@ import { describe, expect, test, beforeEach, afterEach } from 'bun:test';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { saveGame, loadGame, validateSaveData, CURRENT_SAVE_VERSION } from '../../01-Source-code/persistence';
-import type { SaveData, CoreEngine, ActionResult, RenderSnapshot } from '../../01-Source-code/shared/types';
+import type { SaveData, CoreEngine, ActionResult, RenderSnapshot, ActivePiece } from '../../01-Source-code/shared/types';
 import { GameStateLoop } from '../../01-Source-code/game-state-loop';
-import { mockRenderSnapshot } from '../../01-Source-code/shared/mock-engine';
 
 const TEST_DIR = path.resolve(__dirname, 'test-temp-persistence');
 const TEST_SAVE_FILE = path.join(TEST_DIR, 'test-save.json');
 
 class TestEngine implements CoreEngine {
-  public highScore = 0
+  public highScore = 0;
   public score = 0;
   public level = 1;
   public linesClearedTotal = 0;
   public gameOver = false;
-  private lockCallback: ((result: ActionResult) => void) | null = null;
+  private activePiece: ActivePiece = {
+    type: 'T',
+    position: { x: 4, y: 0 },
+    rotation: 0,
+    shape: [
+      [0, 1, 0, 0],
+      [1, 1, 1, 0],
+      [0, 0, 0, 0],
+      [0, 0, 0, 0],
+    ],
+  };
 
   public moveLeft(): ActionResult { return this.tick(); }
   public moveRight(): ActionResult { return this.tick(); }
@@ -26,11 +35,23 @@ class TestEngine implements CoreEngine {
   public hardDrop(): ActionResult { return this.tick(); }
   public tick(): ActionResult { return { success: true, linesCleared: [], gameOver: this.gameOver }; }
   public spawnNextPiece(): ActionResult { return this.tick(); }
-  public getActivePiece() { return mockRenderSnapshot.activePiece; }
-  public setLockCallback(callback: ((result: ActionResult) => void) | null): void { this.lockCallback = callback; }
+  public getActivePiece(): ActivePiece | null { return this.activePiece; }
+  public setLockCallback(_callback: ((result: ActionResult) => void) | null): void {}
   public pauseLockTimer(): boolean { return false; }
   public resumeLockTimer(): void { }
-  public getRenderSnapshot(): RenderSnapshot { return { ...mockRenderSnapshot, score: this.score, level: this.level, highScore: this.highScore, linesClearedTotal: this.linesClearedTotal }; }
+  public getRenderSnapshot(): RenderSnapshot {
+    return {
+      board: Array.from({ length: 20 }, () => Array(10).fill(0)),
+      activePiece: this.activePiece,
+      nextPiece: 'I',
+      score: this.score,
+      level: this.level,
+      highScore: this.highScore,
+      linesClearedTotal: this.linesClearedTotal,
+      status: this.gameOver ? 'gameover' : 'playing',
+      isLocking: false,
+    };
+  }
   public addScore(points: number): void { this.score += points; }
   public setLevel(level: number): void { this.level = level; }
   public setHighScore(hs: number): void { this.highScore = hs; }

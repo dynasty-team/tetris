@@ -1,6 +1,6 @@
 // 02-Tests/core-engine/line-clear.test.ts
 import { describe, expect, test } from 'bun:test';
-import type { Board, CellValue } from '../../01-Source-code/shared/types';
+import type { CellValue } from '../../01-Source-code/shared/types';
 import { createEmptyBoard, setCell } from '../../01-Source-code/shared/board-utils';
 import { BOARD_WIDTH, BOARD_HEIGHT } from '../../01-Source-code/shared/constants';
 import { checkAndClearLines } from '../../01-Source-code/core-engine/line-clear';

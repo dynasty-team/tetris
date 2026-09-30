@@ -1,14 +1,13 @@
 // 02-Tests/core-engine/movement.test.ts
-import { describe, expect, test, beforeEach } from 'bun:test';
-import type { Board, ActivePiece, TetrominoType, ActionResult } from '../../01-Source-code/shared/types';
+import { describe, expect, test } from 'bun:test';
+import type { ActivePiece, TetrominoType, ActionResult } from '../../01-Source-code/shared/types';
 import { createEmptyBoard, setCell } from '../../01-Source-code/shared/board-utils';
-import { LOCK_DELAY_MS, MAX_LOCK_RESETS } from '../../01-Source-code/shared/constants';
-import { getShape, rotatePiece } from '../../01-Source-code/core-engine/tetromino-shapes';
+import { LOCK_DELAY_MS } from '../../01-Source-code/shared/constants';
+import { getShape } from '../../01-Source-code/core-engine/tetromino-shapes';
 import {
   moveLeft,
   moveRight,
   softDrop,
-  rotate,
   hardDrop,
   tick,
   isPieceOnGround,
