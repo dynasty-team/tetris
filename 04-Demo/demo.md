@@ -1,6 +1,6 @@
 ## Demo
 
-วิดีโอตัวอย่างการเล่นเกม แสดงการควบคุม Tetromino, Line Clear, Score, Pause/Resume, Game Over และการบันทึก High Score
+วิดีโอตัวอย่างการเล่นเกมการทำ Line Clear, Score และการบันทึก High Score
 
 
 <p>
