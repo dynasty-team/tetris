@@ -1,7 +1,7 @@
 // 02-Tests/game-state-loop/game-state-loop.test.ts
 import { describe, expect, test, beforeEach, afterEach } from 'bun:test';
 import { GameStateLoop } from '../../01-Source-code/game-state-loop/GameStateLoop';
-import type { CoreEngine, ActionResult, RenderSnapshot, GameAction, SaveData } from '../../01-Source-code/shared/types';
+import type { CoreEngine, ActionResult, RenderSnapshot, GameAction, InputSource, SaveData } from '../../01-Source-code/shared/types';
 import { mockRenderSnapshot } from '../../01-Source-code/shared/mock-engine';
 
 class MockEngine implements CoreEngine {
@@ -14,6 +14,7 @@ class MockEngine implements CoreEngine {
   public lastActionResult: ActionResult = { success: true, linesCleared: [], gameOver: false };
   private lockCallback: ((result: ActionResult) => void) | null = null;
   private lockPaused = false;
+  public pauseLockTimerCalls = 0;
 
   public moveLeft(): ActionResult {
     this.movesCalled.push('moveLeft');
@@ -45,7 +46,7 @@ class MockEngine implements CoreEngine {
   }
   public getActivePiece() { return mockRenderSnapshot.activePiece; }
   public setLockCallback(callback: ((result: ActionResult) => void) | null): void { this.lockCallback = callback; }
-  public pauseLockTimer(): boolean { const wasPaused = this.lockPaused; this.lockPaused = false; return wasPaused; }
+  public pauseLockTimer(): boolean { this.pauseLockTimerCalls++; const wasPaused = this.lockPaused; this.lockPaused = false; return wasPaused; }
   public resumeLockTimer(): void { this.lockPaused = true; }
   public emitLock(result: ActionResult): void { this.lockCallback?.(result); }
   public hasLockCallback(): boolean { return this.lockCallback !== null; }
@@ -66,6 +67,26 @@ class MockEngine implements CoreEngine {
   public addScore(points: number): void { this.score += points; }
   public setLevel(lvl: number): void { this.level = lvl; }
   public getLinesClearedTotal(): number { return this.linesClearedTotal; }
+}
+
+class MockInput implements InputSource {
+  public startCount = 0;
+  public stopCount = 0;
+  private onAction: ((action: GameAction) => void) | null = null;
+
+  public start(onAction: (action: GameAction) => void): void {
+    this.startCount++;
+    this.onAction = onAction;
+  }
+
+  public stop(): void {
+    this.stopCount++;
+    this.onAction = null;
+  }
+
+  public emit(action: GameAction): void {
+    this.onAction?.(action);
+  }
 }
 
 describe('GameStateLoop Orchestrator', () => {
@@ -146,9 +167,11 @@ describe('GameStateLoop Orchestrator', () => {
   test('handleAction(QUIT) สั่งหยุด loop และ trigger save', async () => {
     let saved = false;
     let stopCount = 0;
+    const input = new MockInput();
     engine.score = 1;
     const loop = new GameStateLoop({
       engine,
+      input,
       onLoad: () => null,
       onSave: () => { saved = true; },
       onStop: () => { stopCount++; },
@@ -160,6 +183,10 @@ describe('GameStateLoop Orchestrator', () => {
     expect(loop.isRunning()).toBe(false);
     expect(saved).toBe(true);
     expect(stopCount).toBe(1);
+    expect(input.startCount).toBe(1);
+    expect(input.stopCount).toBe(1);
+    expect(engine.hasLockCallback()).toBe(false);
+    expect(engine.pauseLockTimerCalls).toBeGreaterThan(0);
     loop.stop();
     expect(stopCount).toBe(1);
   });
@@ -280,9 +307,13 @@ describe('GameStateLoop Orchestrator', () => {
 
   test('จบเกมเมื่อผลลัพธ์จากการล็อกระบุ Game Over', async () => {
     let renderedStatus = '';
+    let stopCount = 0;
+    const input = new MockInput();
     const loop = new GameStateLoop({
       engine,
+      input,
       renderer: (snapshot) => { renderedStatus = snapshot.status; },
+      onStop: () => { stopCount++; },
     });
     await loop.start();
 
@@ -290,6 +321,72 @@ describe('GameStateLoop Orchestrator', () => {
 
     expect(loop.isRunning()).toBe(false);
     expect(renderedStatus).toBe('gameover');
+    expect(input.stopCount).toBe(0);
+    expect(stopCount).toBe(0);
+    expect(engine.hasLockCallback()).toBe(false);
+    expect(engine.pauseLockTimerCalls).toBeGreaterThan(0);
+
+    input.emit('QUIT');
+    expect(input.stopCount).toBe(1);
+    expect(stopCount).toBe(1);
+    expect(engine.hasLockCallback()).toBe(false);
+    loop.stop();
+    expect(stopCount).toBe(1);
+  });
+
+  test('Game Over ยังคงแสดงและรับ Q เพื่อออก พร้อมละเว้น action ของเกม', async () => {
+    const input = new MockInput();
+    let stopCount = 0;
+    let renderedStatus = '';
+    const loop = new GameStateLoop({
+      engine,
+      input,
+      renderer: (snapshot) => { renderedStatus = snapshot.status; },
+      onStop: () => { stopCount++; },
+    });
+    await loop.start();
+
+    engine.gameOver = true;
+    engine.lastActionResult = { success: false, linesCleared: [], gameOver: true };
+    loop.tick();
+
+    expect(loop.isRunning()).toBe(false);
+    expect(renderedStatus).toBe('gameover');
+    expect(input.stopCount).toBe(0);
+    expect(stopCount).toBe(0);
+
+    const movesAfterGameOver = [...engine.movesCalled];
+    input.emit('MOVE_LEFT');
+    expect(engine.movesCalled).toEqual(movesAfterGameOver);
+
+    input.emit('QUIT');
+    expect(input.stopCount).toBe(1);
+    expect(stopCount).toBe(1);
+    expect(engine.hasLockCallback()).toBe(false);
+  });
+
+  test('เริ่มต้นด้วย Game Over แล้วยังรอ Q ก่อน cleanup renderer และ input', async () => {
+    engine.gameOver = true;
+    const input = new MockInput();
+    let stopCount = 0;
+    let renderedStatus = '';
+    const loop = new GameStateLoop({
+      engine,
+      input,
+      renderer: (snapshot) => { renderedStatus = snapshot.status; },
+      onStop: () => { stopCount++; },
+    });
+
+    await loop.start();
+
+    expect(input.startCount).toBe(1);
+    expect(input.stopCount).toBe(0);
+    expect(renderedStatus).toBe('gameover');
+    expect(stopCount).toBe(0);
+
+    input.emit('QUIT');
+    expect(input.stopCount).toBe(1);
+    expect(stopCount).toBe(1);
   });
 
   test('เรียก renderer callback ในแต่ละรอบ', async () => {
