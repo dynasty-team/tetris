@@ -27,5 +27,4 @@
   - wall kick 
   - ใช้ระบบ 7-bag Randomizer
 
-
-- Game Over เมื่อ ชิ้นส่วนบล็อก(Tetromino) ชิ้นใหม่ไม่สามารถ Spawn ได้
+- Game Over เมื่อพื้นที่ด้านบนเต็มจนชิ้นส่วนบล็อก(Tetromino)ชิ้นใหม่ไม่สามารถ Spawn ลงมาได้ 
