@@ -3,6 +3,11 @@
 ```text
 
 tetris/
+├── .github/
+│   ├── CODEOWNERS
+│   └── workflows/
+│       └── test.yml
+│
 ├── 01-Source-code/
 │   ├── core-engine/
 │   │   ├── TetrisEngine.ts
@@ -22,9 +27,10 @@ tetris/
 │   │   └── score.ts
 │   │
 │   ├── io-rendering/
-│   │   ├── ConsoleRenderer.ts
+│   │   ├── ConsoleRenderer.tsx
 │   │   ├── KeyboardInput.ts
-│   │   └── index.ts
+│   │   ├── index.ts
+│   │   └── layout.ts
 │   │
 │   ├── persistence/
 │   │   ├── SaveManager.ts
@@ -42,10 +48,11 @@ tetris/
 │   ├── game-state-loop/
 │   ├── io-rendering/
 │   ├── persistence/
-│   ├── shared/
-│   └── sample.test.ts
+│   └── shared/
 │
 ├── 03-Documentation/
+│   ├── img/
+│   │   └── 325189358.jpg
 │   ├── Architecture.md
 │   ├── classdiagram.md
 │   ├── CodeMap.md
@@ -63,9 +70,12 @@ tetris/
 │   │   └── 4.gif
 │   └── demo.md
 │
-├── index.ts
+├── main.ts
 ├── package.json
 ├── tsconfig.json
+├── bun.lock
+├── bunfig.toml
+├── save-data.example.json
 └── README.md
 ```
 
@@ -76,10 +86,10 @@ KeyboardInput
 (implements InputSource)
       |
       v
-Game State Loop
+GameStateLoop
       |
       v
-Tetris Engine
+TetrisEngine
       |
       ├── Movement
       ├── Collision
@@ -89,36 +99,40 @@ Tetris Engine
       └── Randomizer (7-Bag)
       |
       v
-Render Snapshot
+RenderSnapshot
       |
       v
-Console Renderer
+ConsoleRenderer
       |
       v
 Terminal
 
-Game State Loop
+GameStateLoop
       |
-      v
-Persistence
+      ├── Load High Score ตอนเริ่มเกม
       |
-      v
-save-data.json
+      └── Save High Score ตอน Quit / Game Over
+              |
+              v
+          Persistence
+              |
+              v
+        save-data.json
 ```
 
 #### Persistence Layer (Save System)
-- `save-data.json` / `save-data.example.json`: จัดเก็บข้อมูลสถิติคะแนนสูงสุดตลอดกาล (High Score Record) ตาม `SaveData` schema
-- เก็บเฉพาะ `highScore` และ `version`; ไม่เก็บสถานะรอบเกมและไม่รองรับการ resume จากไฟล์นี้
+- `save-data.json` / `save-data.example.json`: จัดเก็บข้อมูลสถิติคะแนนสูงสุด (High Score Record) ตาม `SaveData` schema
+- เก็บเฉพาะ `highScore` และ `version`; ไม่ได้เก็บสถานะของเกมเพื่อกลับมาเล่นต่อ
 
 ### OOP & FP Implementation
 
 | หัวข้อ | ไฟล์ | ใช้ทำอะไร |
 |---|---|---|
-| OOP: Interface | `shared/types.ts` | กำหนด `CoreEngine` และ `InputSource` เป็น contract กลางระหว่างแต่ละส่วนของระบบ |
+| OOP: Interface | `shared/types.ts` | กำหนด `CoreEngine` และ `InputSource` เป็นการกำหนดรูปแบบการทำงานร่วมกันของแต่ละส่วน |
 | OOP: Class implements Interface | `core-engine/TetrisEngine.ts` | ใช้คลาส `TetrisEngine` เป็นตัวทำงานหลักของเกม |
 | FP: Pure Function | `core-engine/line-clear.ts` | ใช้ตรวจและลบแถวที่เต็ม โดยไม่แก้ข้อมูลเดิมโดยตรง |
 | FP: Higher-order Function | `shared/utils.ts` | ใช้ฟังก์ชันที่รับฟังก์ชันอื่นเข้ามาทำงานร่วมกัน |
-| FP: Dependency Injection | `core-engine/randomizer.ts` | ส่งฟังก์ชันสำหรับสุ่มเข้ามาจากภายนอก เพื่อให้เปลี่ยนและทดสอบได้ง่าย |
+| FP-related: Dependency Injection | `core-engine/randomizer.ts` | ส่งฟังก์ชันสุ่มเข้ามาจากภายนอก เพื่อให้เปลี่ยนวิธีสุ่มและทดสอบได้ง่ายขึ้น |
 
 
 ### Testing
@@ -131,4 +145,4 @@ save-data.json
 - `randomizer.test.ts` — ทดสอบระบบ 7-Bag Randomizer
 - `wall-kick.test.ts` — ทดสอบ Wall Kick
 - `spawn.test.ts` — ทดสอบการ Spawn Tetromino
-- `save-load.test.ts` — ทดสอบระบบ Save / Load
+- `save-load.test.ts` — ทดสอบการบันทึกและอ่านข้อมูล High Score
