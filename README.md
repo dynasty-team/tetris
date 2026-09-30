@@ -19,7 +19,7 @@ Tetris เป็นเกมแนว Puzzle เรียงชิ้นส่�
 - Pause / Resume
 - Game Over เมื่อไม่สามารถ Spawn Tetromino ชิ้นใหม่ได้
 - High Score และระบบ Save / Load High Score
-- แสดงผลเกมผ่าน Console / Terminal
+- แสดงผลเกมผ่าน Console / Terminal 
 
 ## Document
 
