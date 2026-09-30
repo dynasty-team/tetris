@@ -40,7 +40,6 @@ tetris/
 │   └── shared/
 │       ├── board-utils.ts
 │       ├── constants.ts
-│       ├── mock-engine.ts
 │       ├── types.ts
 │       └── utils.ts
 │

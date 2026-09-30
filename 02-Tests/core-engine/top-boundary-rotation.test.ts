@@ -12,17 +12,15 @@
 import { describe, expect, test } from 'bun:test';
 import type { Board, ActivePiece, TetrominoType } from '../../01-Source-code/shared/types';
 import { createEmptyBoard, setCell } from '../../01-Source-code/shared/board-utils';
-import { checkCollision } from '../../01-Source-code/core-engine/collision';
 import { getShape } from '../../01-Source-code/core-engine/tetromino-shapes';
 import {
-  rotate,
   lockPieceToBoard,
   performLock,
   hasCellsAboveBoard,
   type MovementState,
 } from '../../01-Source-code/core-engine/movement';
 import { lockActivePieceToBoardStep, applyLock } from '../../01-Source-code/core-engine/lock-pipeline';
-import { TetrisEngine, DEFAULT_SPAWN_POSITION } from '../../01-Source-code/core-engine/TetrisEngine';
+import { TetrisEngine } from '../../01-Source-code/core-engine/TetrisEngine';
 
 /** Helper สำหรับนับจำนวนบล็อก (occupied cells) ทั้งหมดบนกระดาน */
 function countOccupiedCells(board: Board): number {
@@ -141,7 +139,7 @@ describe('Top Boundary Rotation & Lock Integrity (ขอบบนและจำ
       engine.setBoard(board);
       engine.setActivePiece(createTestPiece('T', 3, 0, 0));
 
-      const result = engine.rotate();
+      engine.rotate();
 
       // การหมุนต้องไม่วาง piece ที่ y < 0 เด็ดขาด
       const activePiece = engine.getActivePiece()!;

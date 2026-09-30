@@ -1,7 +1,6 @@
 // 02-Tests/game-state-loop/score.test.ts
 import { describe, expect, test } from 'bun:test';
-import { calculateScore} from '../../01-Source-code/game-state-loop/score';
-import type { ActionResult } from '../../01-Source-code/shared/types';
+import { calculateScore } from '../../01-Source-code/game-state-loop/score';
 
 describe('Scoring System (score.ts)', () => {
   describe('calculateScore()', () => {
