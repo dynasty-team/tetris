@@ -11,13 +11,14 @@ Tetris เป็นเกมแนว Puzzle เรียงชิ้นส่�
 
 ## Document
 
-- [Document](#document)
-- [Game Overview](#game-overview)
-- [Demo](./04-Demo/demo.md)
+- [Document](./03-Documentation/)
 - [Requirements](./03-Documentation/Requirements.md)
 - [Game Rules](./03-Documentation/GameRules.md)
 - [Architecture](./03-Documentation/Architecture.md)
 - [Known Limitations](./03-Documentation/KnownLimitations.md)
+- [ClassDiagram](./03-Documentation/classdiagram.md)
+- [decision-log](./03-Documentation/decision-log.md)
+- [Demo](./04-Demo/demo.md)
 
 
 
