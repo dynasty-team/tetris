@@ -21,6 +21,14 @@ Tetris เป็นเกมแนว Puzzle เรียงชิ้นส่�
 - High Score และระบบ Save / Load High Score
 - แสดงผลเกมผ่าน Console / Terminal 
 
+## Project Structure
+
+- `core-engine` — จัดการกติกาและการทำงานหลักของเกม
+- `game-state-loop` — ควบคุม Game Loop, Score, Level และความเร็วของเกม
+- `io-rendering` — รับ Keyboard Input และแสดงผลผ่าน Terminal
+- `persistence` — จัดการการบันทึกและอ่าน High Score
+- `shared` — เก็บ Type, Interface, Constants และ Utility ที่ใช้ร่วมกัน
+
 ## Document
 
 - [Document](./03-Documentation/)
@@ -74,4 +82,16 @@ bun run start
 ```bash
 bun test
 ```
+## Developers / Contributors
 
+- ฟา — Documentation
+- ซอ,นอส — Core Engine
+- เจ๋ง,ปาล์ม — Game State Loop
+- ภูมิ — Persistence
+- กาย — Testing
+
+## License
+
+This project is licensed under the MIT License.
+
+See the [LICENSE](./LICENSE) file for details.
