@@ -52,7 +52,7 @@ tetris/
 │
 ├── 03-Documentation/
 │   ├── img/
-│   │   └── 325189358.jpg
+│   │   └── logo.jpg
 │   ├── Architecture.md
 │   ├── classdiagram.md
 │   ├── CodeMap.md
@@ -76,7 +76,8 @@ tetris/
 ├── bun.lock
 ├── bunfig.toml
 ├── save-data.example.json
-└── README.md
+├── README.md
+└── LICENSE
 ```
 
 ### System Flow
