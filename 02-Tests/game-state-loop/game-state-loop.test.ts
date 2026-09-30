@@ -23,7 +23,7 @@ const TEST_SAVE_FILE = path.join(TEST_DIR, 'test-save.json');
 
 class MockEngine implements CoreEngine {
   public score = 0;
-  public highScore = 0;
+  public highScore = 0
   public level = 1;
   public linesClearedTotal = 0;
   public gameOver = false;
