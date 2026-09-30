@@ -276,9 +276,14 @@ function Status({
     if (status === "gameover") {
 
         return (
-            <Text color="red" bold>
-                === GAME OVER ===
-            </Text>
+            <Box flexDirection="column" alignItems="center">
+                <Text color="red" bold>
+                    === GAME OVER ===
+                </Text>
+                <Text color="yellow">
+                    Press Q to exit
+                </Text>
+            </Box>
         );
     }
 

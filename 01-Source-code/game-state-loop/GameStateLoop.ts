@@ -49,6 +49,7 @@ export class GameStateLoop {
   private running: boolean = false;
   private paused: boolean = false;
   private isGameOverState: boolean = false;
+  private stopped: boolean = false;
   private timer: ReturnType<typeof setTimeout> | null = null;
   private saveTriggered: boolean = false;
   private saveTask: Promise<void> | null = null;
@@ -76,6 +77,7 @@ export class GameStateLoop {
     this.running = true;
     this.paused = false;
     this.isGameOverState = false;
+    this.stopped = false;
     this.saveTriggered = false;
     this.wasLockingBeforePause = false;
     this.lockHandledDuringAction = false;
@@ -91,15 +93,15 @@ export class GameStateLoop {
       this.engine.spawnNextPiece();
     }
 
+    // เริ่มรับ keyboard input ก่อนตรวจ Game Over เพื่อให้ผู้เล่นออกจากหน้าจอได้
+    if (this.input) {
+      this.input.start((action: GameAction) => this.handleAction(action));
+    }
+
     // หาก engine อยู่ในสถานะ gameOver ตั้งแต่เริ่ม
     if (this.engine.isGameOver()) {
       this.handleGameOver();
       return;
-    }
-
-    // เริ่มรับ keyboard input
-    if (this.input) {
-      this.input.start((action: GameAction) => this.handleAction(action));
     }
 
     // วาดเฟรมแรก
@@ -113,19 +115,16 @@ export class GameStateLoop {
    * หยุด Game Loop และสั่งบันทึกคะแนน
    */
   public stop(): void {
-    if (!this.running) return;
+    if (this.stopped || (!this.running && !this.isGameOverState)) return;
 
     this.running = false;
-    this.clearTickTimer();
-    this.clearLockTimer();
-    this.wasLockingBeforePause = false;
+    this.stopped = true;
+    this.clearRuntimeResources();
     this.lockHandledDuringAction = false;
 
     if (this.input) {
       this.input.stop();
     }
-
-    this.engine.setLockCallback(null);
 
     this.onStop?.();
     this.triggerSave();
@@ -199,12 +198,13 @@ export class GameStateLoop {
    * จัดการ Action ที่ได้รับจาก KeyboardInput หรือเรียกจากภายนอก
    */
   public handleAction(action: GameAction): void {
-    if (!this.running) return;
-
     if (action === 'QUIT') {
       this.stop();
       return;
     }
+
+    // หลัง Game Over รับเฉพาะคำสั่งออก เพื่อคงหน้าจอไว้จนกว่าผู้เล่นจะกด Q
+    if (!this.running || this.isGameOverState) return;
 
     if (action === 'PAUSE') {
       this.togglePause();
@@ -331,18 +331,22 @@ export class GameStateLoop {
    * จัดการเมื่อเกมจบลง (Game Over)
    */
   private handleGameOver(): void {
+    if (this.isGameOverState || this.stopped) return;
+
     this.isGameOverState = true;
     this.running = false;
-    this.clearTickTimer();
-    this.clearLockTimer();
-    this.wasLockingBeforePause = false;
-
-    if (this.input) {
-      this.input.stop();
-    }
+    this.clearRuntimeResources();
 
     this.render('gameover');
     this.triggerSave();
+  }
+
+  /** ล้าง timer และ callback ของ engine เมื่อ gameplay สิ้นสุด */
+  private clearRuntimeResources(): void {
+    this.clearTickTimer();
+    this.clearLockTimer();
+    this.wasLockingBeforePause = false;
+    this.engine.setLockCallback(null);
   }
 
   /**
