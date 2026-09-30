@@ -77,7 +77,8 @@ tetris/
 ├── bun.lock
 ├── bunfig.toml
 ├── save-data.example.json
-└── README.md
+├── README.md
+└── LICENSE
 ```
 
 ### System Flow
